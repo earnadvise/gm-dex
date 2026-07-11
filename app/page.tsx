@@ -423,20 +423,7 @@ export default function Home() {
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col gap-8">
         
-        {/* Banner Alert for Demo Mode */}
-        {!isRealContract && (
-          <div className="flex items-start gap-3 p-4 rounded-2xl glassmorphism border-yellow-500/20 bg-yellow-500/5">
-            <AlertTriangle className="h-5 w-5 text-yellow-500 shrink-0 mt-0.5" />
-            <div className="flex-1 text-sm text-zinc-300">
-              <span className="font-semibold text-white">Local Simulation Mode active.</span> GM Streak contracts are not deployed on your selected network address. We are running in demo mode storing your streak data in LocalStorage. Connect any wallet or perform trades to test out the simple Swap!
-              {isConnected && (
-                <span className="block mt-1 font-medium text-yellow-400">
-                  Using Connected Wallet: {address?.substring(0, 8)}...
-                </span>
-              )}
-            </div>
-          </div>
-        )}
+
 
         {/* Tab Selector */}
         <div className="flex bg-white/5 p-1 rounded-xl w-fit self-center border border-white/5">
