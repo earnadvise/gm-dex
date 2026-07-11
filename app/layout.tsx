@@ -17,6 +17,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "GM DEX | Daily Streaks & Swaps on Base",
   description: "Keep your daily GM streak alive, claim XP, unlock onchain badges, and swap premium tokens on Base.",
+  other: {
+    "base:app_id": "6a488e6c2876ee6c1138a856",
+  },
 };
 
 export default function RootLayout({
