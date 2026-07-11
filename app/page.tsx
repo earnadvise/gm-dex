@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useAccount, useConnect, useDisconnect } from "wagmi";
+import { useAccount, useConnect, useDisconnect, useSendTransaction, useReadContract, useWriteContract } from "wagmi";
+import { encodeFunctionData, Hex } from "viem";
+import { appendBuilderCode } from "@/lib/builderCode";
 import { useGMStreak } from "@/hooks/useGMStreak";
 import { useGMBadge } from "@/hooks/useGMBadge";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
@@ -174,6 +176,110 @@ const BADGES_CONFIG = [
   { id: 3, requiredStreak: 365, name: "GM Diamond Streak", color: "#E0F7FA", desc: "Awarded for keeping a 365-day GM streak." },
 ];
 
+const UNISWAP_V2_ROUTER_ADDRESS = "0x4752ba5dbc23f44d87826276bf6fd6b1c372ad24";
+
+const ERC20_ABI = [
+  {
+    inputs: [
+      { name: "spender", type: "address" },
+      { name: "amount", type: "uint256" }
+    ],
+    name: "approve",
+    outputs: [{ name: "", type: "bool" }],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { name: "owner", type: "address" },
+      { name: "spender", type: "address" }
+    ],
+    name: "allowance",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function"
+  }
+] as const;
+
+const UNISWAP_V2_ROUTER_ABI = [
+  {
+    inputs: [
+      { name: "amountIn", type: "uint256" },
+      { name: "path", type: "address[]" }
+    ],
+    name: "getAmountsOut",
+    outputs: [{ name: "amounts", type: "uint256[]" }],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      { name: "amountOutMin", type: "uint256" },
+      { name: "path", type: "address[]" },
+      { name: "to", type: "address" },
+      { name: "deadline", type: "uint256" }
+    ],
+    name: "swapExactETHForTokens",
+    outputs: [{ name: "amounts", type: "uint256[]" }],
+    stateMutability: "payable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { name: "amountIn", type: "uint256" },
+      { name: "amountOutMin", type: "uint256" },
+      { name: "path", type: "address[]" },
+      { name: "to", type: "address" },
+      { name: "deadline", type: "uint256" }
+    ],
+    name: "swapExactTokensForETH",
+    outputs: [{ name: "amounts", type: "uint256[]" }],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      { name: "amountIn", type: "uint256" },
+      { name: "amountOutMin", type: "uint256" },
+      { name: "path", type: "address[]" },
+      { name: "to", type: "address" },
+      { name: "deadline", type: "uint256" }
+    ],
+    name: "swapExactTokensForTokens",
+    outputs: [{ name: "amounts", type: "uint256[]" }],
+    stateMutability: "nonpayable",
+    type: "function"
+  }
+] as const;
+
+function parseTokenAmount(amount: string, decimals: number): bigint {
+  if (!amount || isNaN(Number(amount))) return 0n;
+  try {
+    const parts = amount.split(".");
+    const integer = parts[0];
+    let fraction = parts[1] || "";
+    if (fraction.length > decimals) {
+      fraction = fraction.slice(0, decimals);
+    } else {
+      fraction = fraction.padEnd(decimals, "0");
+    }
+    return BigInt(integer + fraction);
+  } catch {
+    return 0n;
+  }
+}
+
+function formatTokenAmount(amount: bigint, decimals: number): string {
+  try {
+    const s = amount.toString().padStart(decimals + 1, "0");
+    const integer = s.slice(0, -decimals);
+    const fraction = s.slice(-decimals).replace(/0+$/, "");
+    return fraction ? `${integer}.${fraction}` : integer;
+  } catch {
+    return "0";
+  }
+}
+
 export default function Home() {
   const { address, isConnected } = useAccount();
   const [activeTab, setActiveTab] = useState<"gm" | "swap">("gm");
@@ -212,6 +318,123 @@ export default function Home() {
   const [swapOutputToken, setSwapOutputToken] = useState(SUPPORTED_TOKENS[1]); // USDC
   const [showInputDropdown, setShowInputDropdown] = useState(false);
   const [showOutputDropdown, setShowOutputDropdown] = useState(false);
+
+  // Swap hooks and operations
+  const [swapError, setSwapError] = useState<string>("");
+  const [swapSuccessHash, setSwapSuccessHash] = useState<string>("");
+
+  const inputAmountWei = parseTokenAmount(swapAmount, swapInputToken.decimals);
+  const path = [
+    (swapInputToken.address || "0x4200000000000000000000000000000000000006") as `0x${string}`,
+    (swapOutputToken.address || "0x4200000000000000000000000000000000000006") as `0x${string}`
+  ];
+
+  // Allowance check for ERC-20 inputs
+  const { data: allowance, refetch: refetchAllowance } = useReadContract({
+    address: swapInputToken.address as `0x${string}`,
+    abi: ERC20_ABI,
+    functionName: "allowance",
+    args: address && swapInputToken.address ? [address, UNISWAP_V2_ROUTER_ADDRESS as `0x${string}`] : undefined,
+    query: {
+      enabled: isConnected && !!address && !!swapInputToken.address
+    }
+  });
+
+  // Quote check
+  const { data: amountsOut } = useReadContract({
+    address: UNISWAP_V2_ROUTER_ADDRESS as `0x${string}`,
+    abi: UNISWAP_V2_ROUTER_ABI,
+    functionName: "getAmountsOut",
+    args: inputAmountWei > 0n ? [inputAmountWei, path] : undefined,
+    query: {
+      enabled: isConnected && inputAmountWei > 0n
+    }
+  });
+
+  const outputAmountWei = amountsOut ? (amountsOut as bigint[])[1] : 0n;
+  const displayOutputAmount = outputAmountWei > 0n ? formatTokenAmount(outputAmountWei, swapOutputToken.decimals) : "";
+
+  const { writeContractAsync: approveToken, isPending: isApproving } = useWriteContract();
+  const { sendTransactionAsync: sendSwap, isPending: isSwapping } = useSendTransaction();
+
+  const isApproved = !swapInputToken.address || (allowance !== undefined && allowance >= inputAmountWei);
+
+  const handleApprove = async () => {
+    try {
+      setSwapError("");
+      setSwapSuccessHash("");
+      if (!address || !swapInputToken.address) return;
+      const amountToApprove = parseTokenAmount(swapAmount, swapInputToken.decimals);
+      
+      await approveToken({
+        address: swapInputToken.address as `0x${string}`,
+        abi: ERC20_ABI,
+        functionName: "approve",
+        args: [UNISWAP_V2_ROUTER_ADDRESS as `0x${string}`, amountToApprove]
+      });
+      
+      setTimeout(() => {
+        refetchAllowance();
+      }, 3000);
+    } catch (e: any) {
+      console.error(e);
+      setSwapError(e.message || "Approval failed.");
+    }
+  };
+
+  const handleSwap = async () => {
+    try {
+      setSwapError("");
+      setSwapSuccessHash("");
+      if (!address) return;
+      
+      const amountIn = parseTokenAmount(swapAmount, swapInputToken.decimals);
+      const amountOutMin = outputAmountWei * 95n / 100n; // 5% slippage
+      const deadline = BigInt(Math.floor(Date.now() / 1000) + 1200); // 20 mins deadline
+      
+      let rawData: Hex;
+      let value = 0n;
+
+      if (!swapInputToken.address) {
+        // ETH -> Token
+        rawData = encodeFunctionData({
+          abi: UNISWAP_V2_ROUTER_ABI,
+          functionName: "swapExactETHForTokens",
+          args: [amountOutMin, path, address, deadline]
+        });
+        value = amountIn;
+      } else if (!swapOutputToken.address) {
+        // Token -> ETH
+        rawData = encodeFunctionData({
+          abi: UNISWAP_V2_ROUTER_ABI,
+          functionName: "swapExactTokensForETH",
+          args: [amountIn, amountOutMin, path, address, deadline]
+        });
+      } else {
+        // Token -> Token
+        rawData = encodeFunctionData({
+          abi: UNISWAP_V2_ROUTER_ABI,
+          functionName: "swapExactTokensForTokens",
+          args: [amountIn, amountOutMin, path, address, deadline]
+        });
+      }
+
+      // Suffix Builder Code!
+      const dataWithAttribution = appendBuilderCode(rawData);
+
+      const tx = await sendSwap({
+        to: UNISWAP_V2_ROUTER_ADDRESS as `0x${string}`,
+        data: dataWithAttribution as Hex,
+        value
+      });
+
+      setSwapSuccessHash(tx);
+      setSwapAmount("");
+    } catch (e: any) {
+      console.error(e);
+      setSwapError(e.message || "Swap failed.");
+    }
+  };
 
   // Initialize and load demo state from localStorage
   useEffect(() => {
@@ -740,7 +963,11 @@ export default function Home() {
                       type="number"
                       placeholder="0.0"
                       value={swapAmount}
-                      onChange={(e) => setSwapAmount(e.target.value)}
+                      onChange={(e) => {
+                        setSwapAmount(e.target.value);
+                        setSwapError("");
+                        setSwapSuccessHash("");
+                      }}
                       className="bg-transparent text-2xl font-bold text-white outline-none w-full placeholder-zinc-700"
                     />
                     {/* Input Token Select Dropdown */}
@@ -766,6 +993,8 @@ export default function Home() {
                               onClick={() => {
                                 setSwapInputToken(token);
                                 setShowInputDropdown(false);
+                                setSwapError("");
+                                setSwapSuccessHash("");
                                 // Swap output if same
                                 if (token.symbol === swapOutputToken.symbol) {
                                   setSwapOutputToken(swapInputToken);
@@ -789,6 +1018,8 @@ export default function Home() {
                     const temp = swapInputToken;
                     setSwapInputToken(swapOutputToken);
                     setSwapOutputToken(temp);
+                    setSwapError("");
+                    setSwapSuccessHash("");
                   }}
                   className="w-10 h-10 rounded-full bg-[#0052ff] hover:bg-[#0045d8] border-4 border-[#06070a] flex items-center justify-center absolute left-1/2 top-[84px] -translate-x-1/2 z-10 transition-all active:scale-90"
                 >
@@ -801,8 +1032,8 @@ export default function Home() {
                     <label className="text-xs text-zinc-500 font-semibold">You Buy</label>
                   </div>
                   <div className="flex justify-between items-center gap-3">
-                    <div className="text-2xl font-bold text-zinc-600">
-                      {swapAmount ? (Number(swapAmount) > 0 ? "~" : "0.0") : "0.0"}
+                    <div className="text-2xl font-bold text-white">
+                      {displayOutputAmount || "0.0"}
                     </div>
                     {/* Output Token Select Dropdown */}
                     <div className="relative">
@@ -827,6 +1058,8 @@ export default function Home() {
                               onClick={() => {
                                 setSwapOutputToken(token);
                                 setShowOutputDropdown(false);
+                                setSwapError("");
+                                setSwapSuccessHash("");
                                 // Swap input if same
                                 if (token.symbol === swapInputToken.symbol) {
                                   setSwapInputToken(swapOutputToken);
@@ -844,19 +1077,55 @@ export default function Home() {
                   </div>
                 </div>
 
+                {/* Status Messages */}
+                {swapError && (
+                  <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 p-3 rounded-xl mt-2 font-mono break-words">
+                    {swapError}
+                  </div>
+                )}
+                {swapSuccessHash && (
+                  <div className="text-xs text-green-400 bg-green-500/10 border border-green-500/20 p-3 rounded-xl mt-2 flex flex-col gap-1">
+                    <span className="font-bold">Swap Submitted!</span>
+                    <a
+                      href={`https://basescan.org/tx/${swapSuccessHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline font-mono"
+                    >
+                      View on Basescan ↗
+                    </a>
+                  </div>
+                )}
+
                 {/* Submit Action Button */}
-                <button
-                  onClick={() => {
-                    const fromAddress = swapInputToken.address || "NATIVE";
-                    const toAddress = swapOutputToken.address || "NATIVE";
-                    const amountParam = swapAmount ? `&exactAmount=${swapAmount}` : "";
-                    const url = `https://app.uniswap.org/#/swap?chain=base&inputCurrency=${fromAddress}&outputCurrency=${toAddress}${amountParam}&exactField=input`;
-                    window.open(url, "_blank");
-                  }}
-                  className="w-full bg-[#0052ff] hover:bg-[#0045d8] text-white font-bold py-4 px-6 rounded-2xl mt-4 transition-all flex items-center justify-center gap-2 text-sm shadow-lg shadow-[#0052ff]/30 active:scale-95"
-                >
-                  Swap via Uniswap ↗
-                </button>
+                {!isConnected ? (
+                  <div className="p-3 bg-white/5 border border-white/10 rounded-xl text-xs text-center text-zinc-400 mt-4">
+                    Please connect your wallet first.
+                  </div>
+                ) : !swapAmount || Number(swapAmount) <= 0 ? (
+                  <button
+                    disabled
+                    className="w-full bg-white/5 border border-white/10 text-zinc-500 font-bold py-4 px-6 rounded-2xl mt-4 cursor-not-allowed text-sm"
+                  >
+                    Enter an Amount
+                  </button>
+                ) : !isApproved ? (
+                  <button
+                    onClick={handleApprove}
+                    disabled={isApproving}
+                    className="w-full bg-[#0052ff] hover:bg-[#0045d8] text-white font-bold py-4 px-6 rounded-2xl mt-4 transition-all flex items-center justify-center gap-2 text-sm shadow-lg shadow-[#0052ff]/30 active:scale-95 disabled:opacity-50"
+                  >
+                    {isApproving ? "Approving..." : `Approve ${swapInputToken.symbol}`}
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleSwap}
+                    disabled={isSwapping}
+                    className="w-full bg-[#0052ff] hover:bg-[#0045d8] text-white font-bold py-4 px-6 rounded-2xl mt-4 transition-all flex items-center justify-center gap-2 text-sm shadow-lg shadow-[#0052ff]/30 active:scale-95 disabled:opacity-50"
+                  >
+                    {isSwapping ? "Swapping..." : "Swap Now"}
+                  </button>
+                )}
               </div>
             </div>
 
@@ -867,7 +1136,7 @@ export default function Home() {
                 Attribution & Support
               </div>
               <p className="text-xs leading-relaxed">
-                Swapping tokens supports the GM DEX platform. Transactions are executed securely and directly on Uniswap's protocol on the Base blockchain.
+                Swapping tokens supports the GM DEX platform. Transactions are executed directly onchain with your custom Builder Code suffix attached.
               </p>
             </div>
 
