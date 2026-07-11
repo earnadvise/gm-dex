@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useAccount, useConnect, useDisconnect } from "wagmi";
-import { Swap } from "@coinbase/onchainkit/swap";
 import { useGMStreak } from "@/hooks/useGMStreak";
 import { useGMBadge } from "@/hooks/useGMBadge";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
@@ -206,6 +205,13 @@ export default function Home() {
   const [isDemoCooldown, setIsDemoCooldown] = useState(false);
   const [particles, setParticles] = useState<{ id: number; x: number; y: number }[]>([]);
   const [showNotificationBadge, setShowNotificationBadge] = useState(false);
+
+  // Custom Uniswap Swap state
+  const [swapAmount, setSwapAmount] = useState<string>("");
+  const [swapInputToken, setSwapInputToken] = useState(SUPPORTED_TOKENS[0]); // ETH
+  const [swapOutputToken, setSwapOutputToken] = useState(SUPPORTED_TOKENS[1]); // USDC
+  const [showInputDropdown, setShowInputDropdown] = useState(false);
+  const [showOutputDropdown, setShowOutputDropdown] = useState(false);
 
   // Initialize and load demo state from localStorage
   useEffect(() => {
@@ -712,23 +718,145 @@ export default function Home() {
         {activeTab === "swap" && (
           <div className="max-w-md mx-auto w-full flex flex-col gap-6">
             
-            {/* OnchainKit Swap Component Wrapped in visual card */}
+            {/* Uniswap Swap Interface Card */}
             <div className="glassmorphism rounded-3xl p-6 glow-card border-[#0052ff]/10">
               <h2 className="text-xl font-bold mb-2 flex items-center gap-2">
                 <ArrowRightLeft className="h-5 w-5 text-[#0052ff]" />
                 Token Swap
               </h2>
               <p className="text-zinc-400 text-xs mb-6">
-                Swap premium tokens directly on Base with optimized routing and smart wallet fee savings.
+                Swap premium tokens directly on Base with optimized Uniswap routing.
               </p>
 
-              {/* Coinbase OnchainKit Swap */}
-              <div className="w-full flex justify-center bg-black/20 p-2.5 rounded-2xl border border-white/5">
-                <Swap 
-                  title="DEX Swaps" 
-                  from={SUPPORTED_TOKENS as any} 
-                  to={SUPPORTED_TOKENS as any} 
-                />
+              {/* Swap Form */}
+              <div className="flex flex-col gap-4 relative">
+                {/* Input Card */}
+                <div className="bg-black/40 border border-white/5 rounded-2xl p-4 flex flex-col gap-2">
+                  <div className="flex justify-between items-center">
+                    <label className="text-xs text-zinc-500 font-semibold">You Sell</label>
+                  </div>
+                  <div className="flex justify-between items-center gap-3">
+                    <input
+                      type="number"
+                      placeholder="0.0"
+                      value={swapAmount}
+                      onChange={(e) => setSwapAmount(e.target.value)}
+                      className="bg-transparent text-2xl font-bold text-white outline-none w-full placeholder-zinc-700"
+                    />
+                    {/* Input Token Select Dropdown */}
+                    <div className="relative">
+                      <button
+                        onClick={() => {
+                          setShowInputDropdown(!showInputDropdown);
+                          setShowOutputDropdown(false);
+                        }}
+                        className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/15 px-3 py-1.5 rounded-full transition-colors shrink-0"
+                      >
+                        {swapInputToken.image && (
+                          <img src={swapInputToken.image} alt={swapInputToken.symbol} className="w-5 h-5 rounded-full" />
+                        )}
+                        <span className="font-bold text-sm text-white">{swapInputToken.symbol}</span>
+                      </button>
+                      
+                      {showInputDropdown && (
+                        <div className="absolute right-0 mt-2 w-48 bg-[#0c0d12] border border-white/10 rounded-2xl shadow-xl z-50 overflow-hidden">
+                          {SUPPORTED_TOKENS.map((token) => (
+                            <button
+                              key={`in-${token.symbol}`}
+                              onClick={() => {
+                                setSwapInputToken(token);
+                                setShowInputDropdown(false);
+                                // Swap output if same
+                                if (token.symbol === swapOutputToken.symbol) {
+                                  setSwapOutputToken(swapInputToken);
+                                }
+                              }}
+                              className="flex items-center gap-2.5 w-full px-4 py-3 hover:bg-white/5 text-left text-sm"
+                            >
+                              {token.image && <img src={token.image} alt={token.symbol} className="w-5 h-5 rounded-full" />}
+                              <span className="font-semibold text-white">{token.symbol}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Flip Button */}
+                <button
+                  onClick={() => {
+                    const temp = swapInputToken;
+                    setSwapInputToken(swapOutputToken);
+                    setSwapOutputToken(temp);
+                  }}
+                  className="w-10 h-10 rounded-full bg-[#0052ff] hover:bg-[#0045d8] border-4 border-[#06070a] flex items-center justify-center absolute left-1/2 top-[84px] -translate-x-1/2 z-10 transition-all active:scale-90"
+                >
+                  <ArrowRightLeft className="h-4 w-4 text-white rotate-90" />
+                </button>
+
+                {/* Output Card */}
+                <div className="bg-black/40 border border-white/5 rounded-2xl p-4 flex flex-col gap-2 mt-2">
+                  <div className="flex justify-between items-center">
+                    <label className="text-xs text-zinc-500 font-semibold">You Buy</label>
+                  </div>
+                  <div className="flex justify-between items-center gap-3">
+                    <div className="text-2xl font-bold text-zinc-600">
+                      {swapAmount ? (Number(swapAmount) > 0 ? "~" : "0.0") : "0.0"}
+                    </div>
+                    {/* Output Token Select Dropdown */}
+                    <div className="relative">
+                      <button
+                        onClick={() => {
+                          setShowOutputDropdown(!showOutputDropdown);
+                          setShowInputDropdown(false);
+                        }}
+                        className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/15 px-3 py-1.5 rounded-full transition-colors shrink-0"
+                      >
+                        {swapOutputToken.image && (
+                          <img src={swapOutputToken.image} alt={swapOutputToken.symbol} className="w-5 h-5 rounded-full" />
+                        )}
+                        <span className="font-bold text-sm text-white">{swapOutputToken.symbol}</span>
+                      </button>
+                      
+                      {showOutputDropdown && (
+                        <div className="absolute right-0 mt-2 w-48 bg-[#0c0d12] border border-white/10 rounded-2xl shadow-xl z-50 overflow-hidden">
+                          {SUPPORTED_TOKENS.map((token) => (
+                            <button
+                              key={`out-${token.symbol}`}
+                              onClick={() => {
+                                setSwapOutputToken(token);
+                                setShowOutputDropdown(false);
+                                // Swap input if same
+                                if (token.symbol === swapInputToken.symbol) {
+                                  setSwapInputToken(swapOutputToken);
+                                }
+                              }}
+                              className="flex items-center gap-2.5 w-full px-4 py-3 hover:bg-white/5 text-left text-sm"
+                            >
+                              {token.image && <img src={token.image} alt={token.symbol} className="w-5 h-5 rounded-full" />}
+                              <span className="font-semibold text-white">{token.symbol}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Submit Action Button */}
+                <button
+                  onClick={() => {
+                    const fromAddress = swapInputToken.address || "NATIVE";
+                    const toAddress = swapOutputToken.address || "NATIVE";
+                    const amountParam = swapAmount ? `&exactAmount=${swapAmount}` : "";
+                    const url = `https://app.uniswap.org/#/swap?chain=base&inputCurrency=${fromAddress}&outputCurrency=${toAddress}${amountParam}&exactField=input`;
+                    window.open(url, "_blank");
+                  }}
+                  className="w-full bg-[#0052ff] hover:bg-[#0045d8] text-white font-bold py-4 px-6 rounded-2xl mt-4 transition-all flex items-center justify-center gap-2 text-sm shadow-lg shadow-[#0052ff]/30 active:scale-95"
+                >
+                  Swap via Uniswap ↗
+                </button>
               </div>
             </div>
 
@@ -739,7 +867,7 @@ export default function Home() {
                 Attribution & Support
               </div>
               <p className="text-xs leading-relaxed">
-                Swapping tokens supports the GM DEX platform. Transactions are executed directly on the Base blockchain using the Coinbase Smart Wallet protocol.
+                Swapping tokens supports the GM DEX platform. Transactions are executed securely and directly on Uniswap's protocol on the Base blockchain.
               </p>
             </div>
 
