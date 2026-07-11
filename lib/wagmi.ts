@@ -1,24 +1,36 @@
 import { createConfig, http, cookieStorage, createStorage } from "wagmi";
-import { base, baseSepolia, localhost } from "wagmi/chains";
-import { coinbaseWallet, injected } from "wagmi/connectors";
+import { base, baseSepolia } from "wagmi/chains";
+import { coinbaseWallet, injected, metaMask } from "wagmi/connectors";
+
+const isProd = process.env.NODE_ENV === "production";
 
 export const wagmiConfig = createConfig({
-  chains: [base, baseSepolia, localhost],
+  chains: isProd ? [base] : [base, baseSepolia],
   ssr: true,
   storage: createStorage({
     storage: cookieStorage,
   }),
   connectors: [
+    // Allow both Coinbase Smart Wallet AND EOA wallets
     coinbaseWallet({
       appName: "GM DEX",
-      preference: "smartWalletOnly",
+      preference: "all",
     }),
-    injected(),
+    // MetaMask
+    metaMask({
+      dappMetadata: {
+        name: "GM DEX",
+        url: "https://gm-dex.vercel.app",
+      },
+    }),
+    // Any other injected wallet (Rabby, Brave, etc.)
+    injected({ shimDisconnect: true }),
   ],
   transports: {
-    [base.id]: http(process.env.NEXT_PUBLIC_RPC_URL || "https://mainnet.base.org"),
+    [base.id]: http(
+      process.env.NEXT_PUBLIC_RPC_URL || "https://mainnet.base.org"
+    ),
     [baseSepolia.id]: http("https://sepolia.base.org"),
-    [localhost.id]: http("http://127.0.0.1:8545"),
   },
 });
 
