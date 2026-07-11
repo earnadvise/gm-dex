@@ -436,6 +436,43 @@ export default function Home() {
     }
   };
 
+  // GM Streak hooks and operations
+  const [gmError, setGmError] = useState<string>("");
+  const [gmSuccessHash, setGmSuccessHash] = useState<string>("");
+  const { sendTransactionAsync: sendGMTransaction, isPending: isGMSending } = useSendTransaction();
+
+  const handleSayGMOnchain = async () => {
+    try {
+      setGmError("");
+      setGmSuccessHash("");
+      if (!address) {
+        setGmError("Please connect your wallet first.");
+        return;
+      }
+      if (!contractStreak.sayGMCall || contractStreak.sayGMCall.length === 0) {
+        setGmError("Onchain transaction call could not be prepared. Please ensure your contract addresses are correct.");
+        return;
+      }
+
+      const call = contractStreak.sayGMCall[0];
+      const tx = await sendGMTransaction({
+        to: call.to as `0x${string}`,
+        data: call.data as Hex,
+      });
+
+      setGmSuccessHash(tx);
+      
+      // Proactively refetch after 5 seconds to get the updated values
+      setTimeout(() => {
+        contractStreak.refetch();
+        contractBadges.refetch();
+      }, 5000);
+    } catch (e: any) {
+      console.error(e);
+      setGmError(e.message || "GM transaction failed.");
+    }
+  };
+
   // Initialize and load demo state from localStorage
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -547,7 +584,7 @@ export default function Home() {
         xp: contractStreak.xp,
         isCooldown: contractStreak.isGMCooldown,
         cooldownText: contractStreak.cooldownTimeLeft,
-        sayGM: () => {}, // Handled by OnchainKit transaction components, or writeTransaction
+        sayGM: handleSayGMOnchain,
         refetch: contractStreak.refetch
       }
     : {
@@ -732,26 +769,46 @@ export default function Home() {
                   ) : (
                     <button
                       onClick={activeStats.sayGM}
-                      disabled={isRealContract} // Real contract requires onchain Tx
-                      className="group w-48 h-48 rounded-full bg-gradient-to-tr from-[#0052ff] to-[#ffd700] p-1 flex items-center justify-center cursor-pointer active:scale-95 transition-all duration-300 relative shadow-2xl shadow-[#0052ff]/20 hover:shadow-[#0052ff]/40"
+                      disabled={isRealContract && isGMSending}
+                      className="group w-48 h-48 rounded-full bg-gradient-to-tr from-[#0052ff] to-[#ffd700] p-1 flex items-center justify-center cursor-pointer active:scale-95 transition-all duration-300 relative shadow-2xl shadow-[#0052ff]/20 hover:shadow-[#0052ff]/40 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <div className="w-full h-full rounded-full bg-[#0d0e15] group-hover:bg-[#0d0e15]/40 flex flex-col items-center justify-center transition-colors">
-                        <Sun className="h-16 w-16 text-[#ffd700] group-hover:scale-110 transition-transform duration-300" />
+                        <Sun className={`h-16 w-16 text-[#ffd700] transition-transform duration-300 ${isGMSending ? "animate-spin" : "group-hover:scale-110"}`} />
                         <span className="text-lg font-black tracking-widest text-[#ffd700] mt-2 group-hover:text-white">
-                          SAY GM
+                          {isGMSending ? "SENDING..." : "SAY GM"}
                         </span>
                       </div>
                     </button>
                   )}
                 </div>
 
-                {isRealContract && !activeStats.isCooldown && (
-                  <div className="w-full max-w-sm mb-6">
-                    <p className="text-xs text-zinc-400 mb-2">Contracts are configured. Say GM onchain:</p>
-                    {/* Add Transaction flow here if needed, or point to write contract */}
-                    <div className="p-3 bg-white/5 border border-white/10 rounded-xl text-xs text-[#0052ff]">
-                      Please use your wallet client to invoke <code className="bg-black/50 px-1 py-0.5 rounded">sayGM()</code> on the GMStreak contract.
-                    </div>
+                {isRealContract && isConnected && !activeStats.isCooldown && (
+                  <div className="text-[10px] text-zinc-500 font-semibold mb-6 flex items-center gap-1.5 justify-center">
+                    <Sparkles className="h-3.5 w-3.5 text-[#ffd700]" />
+                    Builder Code <code className="bg-white/5 px-1 py-0.5 rounded text-zinc-400">bc_jr1lqf3i</code> active
+                  </div>
+                )}
+
+                {isRealContract && isConnected && (
+                  <div className="w-full max-w-sm mb-6 flex flex-col gap-2">
+                    {gmError && (
+                      <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 p-3 rounded-xl font-mono break-words">
+                        {gmError}
+                      </div>
+                    )}
+                    {gmSuccessHash && (
+                      <div className="text-xs text-green-400 bg-green-500/10 border border-green-500/20 p-3 rounded-xl flex flex-col gap-1">
+                        <span className="font-bold">GM Transaction Sent!</span>
+                        <a
+                          href={`https://basescan.org/tx/${gmSuccessHash}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline font-mono"
+                        >
+                          View on Basescan ↗
+                        </a>
+                      </div>
+                    )}
                   </div>
                 )}
 
