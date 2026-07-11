@@ -1,0 +1,80 @@
+@import "tailwindcss";
+
+:root {
+  --background: #06070a;
+  --foreground: #f4f6fa;
+  --card-bg: rgba(13, 15, 24, 0.7);
+  --card-border: rgba(255, 255, 255, 0.08);
+  --primary: #0052ff;
+  --primary-hover: #0045d8;
+  --accent: #ffd700;
+  --accent-glow: rgba(255, 215, 0, 0.15);
+  --success: #00c853;
+  --error: #ff3d00;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card-bg: var(--card-bg);
+  --color-card-border: var(--card-border);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-accent: var(--accent);
+  --color-success: var(--success);
+  --color-error: var(--error);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Custom premium scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #06070a;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 82, 255, 0.3);
+}
+
+/* Blur backdrop & glows */
+.glassmorphism {
+  background: var(--card-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--card-border);
+}
+
+.glow-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glow-card:hover {
+  box-shadow: 0 0 25px rgba(0, 82, 255, 0.15);
+  border-color: rgba(0, 82, 255, 0.3);
+}
+
+.glow-text-gold {
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.glow-text-blue {
+  text-shadow: 0 0 12px rgba(0, 82, 255, 0.6);
+}
+
+.safe-bottom-padding {
+  padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+}
