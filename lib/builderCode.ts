@@ -1,7 +1,7 @@
 import { Attribution } from "ox/erc8021";
 import { concat, Hex } from "viem";
 
-export const BUILDER_CODE = process.env.NEXT_PUBLIC_BUILDER_CODE || "bc_gmdex";
+export const BUILDER_CODE = process.env.NEXT_PUBLIC_BUILDER_CODE || "bc_jr1lqf3i";
 
 /**
  * Appends the Builder Code to transaction calldata for transaction attribution.
