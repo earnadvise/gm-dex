@@ -594,7 +594,9 @@ export default function Home() {
         xp: demoStreak.xp,
         isCooldown: isDemoCooldown,
         cooldownText: demoCooldownTimeLeft,
-        sayGM: handleSayGMDemo,
+        sayGM: isRealContract ? () => {
+          alert("Please connect your wallet first at the top right.");
+        } : handleSayGMDemo,
         refetch: () => {}
       };
 
@@ -736,6 +738,15 @@ export default function Home() {
                   )}
                 </div>
 
+                {!isRealContract && (
+                  <div className="mb-6 px-4 py-2.5 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl text-xs text-yellow-400 text-center max-w-sm flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 shrink-0 text-yellow-500" />
+                    <span>
+                      <strong>Demo Mode Active:</strong> GM contract address not configured. Actions are simulated locally. To go on-chain, configure <code>NEXT_PUBLIC_GM_STREAK_ADDRESS</code>.
+                    </span>
+                  </div>
+                )}
+
                 <h2 className="text-2xl font-bold mb-2">Claim Your Daily GM</h2>
                 <p className="text-zinc-400 text-sm max-w-sm mb-8">
                   Say GM once every 24 hours to grow your streak, earn XP, and unlock exclusive onchain badges.
@@ -786,6 +797,13 @@ export default function Home() {
                   <div className="text-[10px] text-zinc-500 font-semibold mb-6 flex items-center gap-1.5 justify-center">
                     <Sparkles className="h-3.5 w-3.5 text-[#ffd700]" />
                     Builder Code <code className="bg-white/5 px-1 py-0.5 rounded text-zinc-400">bc_jr1lqf3i</code> active
+                  </div>
+                )}
+
+                {isRealContract && !isConnected && (
+                  <div className="mb-6 px-4 py-2.5 bg-[#0052ff]/10 border border-[#0052ff]/20 rounded-xl text-xs text-zinc-400 text-center max-w-sm flex items-center gap-2 justify-center">
+                    <Info className="h-4 w-4 shrink-0 text-[#0052ff]" />
+                    <span>Connect your wallet at the top right to say GM on-chain.</span>
                   </div>
                 )}
 
