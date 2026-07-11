@@ -1,19 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useAccount } from "wagmi";
-import { 
-  ConnectWallet, 
-  Wallet, 
-  WalletDropdown, 
-  WalletDropdownDisconnect 
-} from "@coinbase/onchainkit/wallet";
-import {
-  Address,
-  Avatar,
-  Name,
-  Identity
-} from "@coinbase/onchainkit/identity";
+import { useState, useEffect, useRef } from "react";
+import { useAccount, useConnect, useDisconnect } from "wagmi";
 import { Swap } from "@coinbase/onchainkit/swap";
 import { useGMStreak } from "@/hooks/useGMStreak";
 import { useGMBadge } from "@/hooks/useGMBadge";
@@ -37,6 +25,123 @@ import {
   Info,
   User
 } from "lucide-react";
+
+// ─── Custom Wallet Button (works with MetaMask, Coinbase, Rabby, etc.) ───────
+function WalletButton() {
+  const { address, isConnected } = useAccount();
+  const { connectors, connect, isPending } = useConnect();
+  const { disconnect } = useDisconnect();
+  const [showModal, setShowModal] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (dropRef.current && !dropRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const short = address
+    ? `${address.slice(0, 6)}...${address.slice(-4)}`
+    : "";
+
+  if (isConnected) {
+    return (
+      <div className="relative" ref={dropRef}>
+        <button
+          onClick={() => setShowDropdown(v => !v)}
+          className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-semibold rounded-full px-4 py-2 transition-all duration-200"
+        >
+          <div className="h-6 w-6 rounded-full bg-gradient-to-tr from-[#0052ff] to-[#ffd700] flex items-center justify-center">
+            <User className="h-3 w-3 text-white" />
+          </div>
+          <span className="text-sm">{short}</span>
+        </button>
+        {showDropdown && (
+          <div className="absolute right-0 mt-2 w-48 bg-[#0c0d12] border border-white/10 rounded-2xl shadow-xl z-50 overflow-hidden">
+            <div className="px-4 py-3 border-b border-white/10">
+              <p className="text-xs text-zinc-500">Connected</p>
+              <p className="text-sm text-white font-mono mt-0.5">{short}</p>
+            </div>
+            <button
+              onClick={() => { disconnect(); setShowDropdown(false); }}
+              className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-white/5 transition-colors"
+            >
+              Disconnect
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <button
+        onClick={() => setShowModal(true)}
+        className="bg-[#0052ff] hover:bg-[#0045d8] text-white font-semibold rounded-full px-5 py-2.5 transition-all duration-200 shadow-lg shadow-[#0052ff]/30"
+      >
+        Connect Wallet
+      </button>
+
+      {/* Wallet Picker Modal */}
+      {showModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            onClick={() => setShowModal(false)}
+          />
+          <div className="relative bg-[#0c0d12] border border-white/10 rounded-3xl shadow-2xl w-full max-w-sm p-6">
+            <h2 className="text-lg font-bold text-white mb-1">Connect Wallet</h2>
+            <p className="text-sm text-zinc-500 mb-5">Choose your wallet to get started</p>
+            <div className="flex flex-col gap-3">
+              {connectors.map((connector) => (
+                <button
+                  key={connector.uid}
+                  disabled={isPending}
+                  onClick={() => {
+                    connect({ connector });
+                    setShowModal(false);
+                  }}
+                  className="flex items-center gap-4 w-full p-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-2xl transition-all duration-200 group"
+                >
+                  <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-[#0052ff]/20 to-[#ffd700]/20 border border-white/10 flex items-center justify-center flex-shrink-0">
+                    <span className="text-xl">
+                      {connector.name.toLowerCase().includes("coinbase") ? "🔵" :
+                       connector.name.toLowerCase().includes("metamask") ? "🦊" :
+                       connector.name.toLowerCase().includes("brave") ? "🦁" :
+                       "🔗"}
+                    </span>
+                  </div>
+                  <div className="text-left">
+                    <p className="text-white font-semibold text-sm">{connector.name}</p>
+                    <p className="text-zinc-500 text-xs">
+                      {connector.name.toLowerCase().includes("coinbase") ? "Smart Wallet or EOA" :
+                       connector.name.toLowerCase().includes("metamask") ? "Browser extension" :
+                       "Browser extension"}
+                    </p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-zinc-600 group-hover:text-zinc-400 ml-auto transition-colors" />
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setShowModal(false)}
+              className="mt-4 w-full text-sm text-zinc-500 hover:text-zinc-300 transition-colors py-2"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
 
 // Mock badges SVG generator for Demo Mode
 function getMockBadgeSVG(name: string, days: number, color: string) {
@@ -309,21 +414,8 @@ export default function Home() {
           </div>
 
           <div className="flex items-center gap-4">
-            {/* Wallet Button */}
-            <Wallet>
-              <ConnectWallet className="!bg-[#0052ff] hover:!bg-[#0045d8] !text-white !font-semibold !rounded-full !px-5 !py-2.5 !transition-all !duration-200">
-                <Avatar className="h-6 w-6" />
-                <Name />
-              </ConnectWallet>
-              <WalletDropdown className="!bg-[#0c0d12] !border !border-white/10 !rounded-2xl">
-                <Identity className="px-4 pt-3 pb-2" hasCopyAddressOnClick>
-                  <Avatar />
-                  <Name />
-                  <Address className="!text-zinc-400" />
-                </Identity>
-                <WalletDropdownDisconnect className="!text-red-400 hover:!bg-white/5 !transition-colors" />
-              </WalletDropdown>
-            </Wallet>
+            {/* Wallet Button — works with MetaMask, Coinbase, Rabby, etc. */}
+            <WalletButton />
           </div>
         </div>
       </header>
