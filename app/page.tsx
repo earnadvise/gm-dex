@@ -21,6 +21,9 @@ import {
 } from "lucide-react";
 
 // ─── Wallet Button ───────────────────────────────────────────────────────────
+// Only show these wallet names
+const ALLOWED_WALLETS = ["coinbase wallet", "metamask", "injected"];
+
 function WalletButton() {
   const { address, isConnected } = useAccount();
   const { connectors, connect, isPending } = useConnect();
@@ -28,6 +31,20 @@ function WalletButton() {
   const [showModal, setShowModal] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropRef = useRef<HTMLDivElement>(null);
+
+  // Filter to only Coinbase, MetaMask, Rabby/Injected
+  const filteredConnectors = connectors.filter((c) => {
+    const n = c.name.toLowerCase();
+    return ALLOWED_WALLETS.some((w) => n.includes(w));
+  });
+  // Dedupe by name
+  const seen = new Set<string>();
+  const uniqueConnectors = filteredConnectors.filter((c) => {
+    const key = c.name.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -95,26 +112,29 @@ function WalletButton() {
               </button>
             </div>
             <div className="flex flex-col gap-3">
-              {connectors.map((connector) => (
-                <button
-                  key={connector.uid}
-                  disabled={isPending}
-                  onClick={() => { connect({ connector }); setShowModal(false); }}
-                  className="flex items-center gap-4 w-full p-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-2xl transition-all duration-200 group"
-                >
-                  <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-[#0052ff]/20 to-[#ffd700]/20 border border-white/10 flex items-center justify-center flex-shrink-0">
-                    <span className="text-xl">
-                      {connector.name.toLowerCase().includes("coinbase") ? "🔵" :
-                       connector.name.toLowerCase().includes("metamask") ? "🦊" :
-                       connector.name.toLowerCase().includes("brave") ? "🦁" : "🔗"}
-                    </span>
-                  </div>
-                  <div className="text-left">
-                    <p className="text-white font-semibold text-sm">{connector.name}</p>
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-zinc-600 group-hover:text-zinc-400 ml-auto transition-colors" />
-                </button>
-              ))}
+              {uniqueConnectors.map((connector) => {
+                const n = connector.name.toLowerCase();
+                const icon = n.includes("coinbase") ? "🔵" : n.includes("metamask") ? "🦊" : "🐰";
+                const label = n.includes("coinbase") ? "Coinbase Wallet" : n.includes("metamask") ? "MetaMask" : "Rabby / Browser Wallet";
+                const desc = n.includes("coinbase") ? "Smart Wallet or EOA" : n.includes("metamask") ? "Browser extension" : "Injected browser wallet";
+                return (
+                  <button
+                    key={connector.uid}
+                    disabled={isPending}
+                    onClick={() => { connect({ connector }); setShowModal(false); }}
+                    className="flex items-center gap-4 w-full p-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-2xl transition-all duration-200 group"
+                  >
+                    <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-[#0052ff]/20 to-[#ffd700]/20 border border-white/10 flex items-center justify-center flex-shrink-0">
+                      <span className="text-xl">{icon}</span>
+                    </div>
+                    <div className="text-left">
+                      <p className="text-white font-semibold text-sm">{label}</p>
+                      <p className="text-zinc-500 text-xs">{desc}</p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-zinc-600 group-hover:text-zinc-400 ml-auto transition-colors" />
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -241,10 +261,17 @@ export default function Home() {
   }, []);
 
   const amountWei = parseAmt(amount, inputToken.decimals);
-  const path: [`0x${string}`, `0x${string}`] = [
-    (inputToken.address || WETH) as `0x${string}`,
-    (outputToken.address || WETH) as `0x${string}`,
-  ];
+
+  // Build swap path — Token→Token routes through WETH for liquidity
+  const buildPath = (): `0x${string}`[] => {
+    const inAddr = (inputToken.address || WETH) as `0x${string}`;
+    const outAddr = (outputToken.address || WETH) as `0x${string}`;
+    // If either side is ETH/WETH, direct path
+    if (!inputToken.address || !outputToken.address) return [inAddr, outAddr];
+    // Token→Token: route through WETH
+    return [inAddr, WETH as `0x${string}`, outAddr];
+  };
+  const path = buildPath();
 
   // Quote
   const { data: amountsOut } = useReadContract({
@@ -255,7 +282,7 @@ export default function Home() {
     query: { enabled: isConnected && amountWei > 0n },
   });
 
-  const outWei = amountsOut ? (amountsOut as bigint[])[1] : 0n;
+  const outWei = amountsOut ? (amountsOut as bigint[])[amountsOut.length - 1] : 0n;
   const displayOut = outWei > 0n ? fmtAmt(outWei, outputToken.decimals) : "";
 
   // Allowance

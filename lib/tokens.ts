@@ -8,12 +8,12 @@ export interface Token {
 }
 
 export const ETH: Token = {
-  address: "", // Native ETH represented by empty string in OnchainKit
+  address: "", // Native ETH represented by empty string
   chainId: 8453,
   decimals: 18,
   name: "Ethereum",
   symbol: "ETH",
-  image: "https://wallet-api-production.s3.amazonaws.com/uploads/tokens/eth_288.png",
+  image: "https://assets.coingecko.com/coins/images/279/small/ethereum.png",
 };
 
 export const USDC: Token = {
@@ -22,7 +22,7 @@ export const USDC: Token = {
   decimals: 6,
   name: "USD Coin",
   symbol: "USDC",
-  image: "https://dynamic-assets.coinbase.com/3c15df5e473412589f52e4b97b7eb1b/metadata/images/1455e9c0-13ce-4b9d-b3e3-c5e2d4e6c8b3.png",
+  image: "https://assets.coingecko.com/coins/images/6319/small/usdc.png",
 };
 
 export const cbBTC: Token = {
@@ -31,7 +31,7 @@ export const cbBTC: Token = {
   decimals: 8,
   name: "Coinbase Wrapped BTC",
   symbol: "cbBTC",
-  image: "https://dynamic-assets.coinbase.com/5b1ab19d4546522c0691e843b09de23a26dbfeaa2377fa1cc9f68e0d6e685aa92d24495af445cbf92b0c1630c904faab7c8e96bb9f1a070f3f6c8d7de077b949/metadata/images/40960d70-bf21-4f9e-a6cf-87adff7c5936.png",
+  image: "https://assets.coingecko.com/coins/images/40143/small/cbbtc.webp",
 };
 
 export const EURC: Token = {
@@ -40,7 +40,7 @@ export const EURC: Token = {
   decimals: 6,
   name: "Euro Coin",
   symbol: "EURC",
-  image: "https://dynamic-assets.coinbase.com/978ab46d843ab7f415c1b6973ba52427a19999059e6edc6e4be3cb9761e0f0cc836c2ef16b08e58319f390029b359f1fb9d1b1137c4c1a5f6e3c8d7de077b949/metadata/images/1fc6fcdb-226e-44c1-9fbd-d1bf1e6fdbcd.png",
+  image: "https://assets.coingecko.com/coins/images/26045/small/euro-coin.png",
 };
 
 export const DEGEN: Token = {
@@ -49,7 +49,7 @@ export const DEGEN: Token = {
   decimals: 18,
   name: "Degen",
   symbol: "DEGEN",
-  image: "https://wallet-api-production.s3.amazonaws.com/uploads/tokens/degen_288.png",
+  image: "https://assets.coingecko.com/coins/images/34515/small/android-chrome-512x512.png",
 };
 
 export const SUPPORTED_TOKENS = [ETH, USDC, cbBTC, EURC, DEGEN];
