@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useAccount, useConnect, useDisconnect, useSendTransaction, useReadContract, useWriteContract, useSwitchChain } from "wagmi";
+import { useAccount, useConnect, useDisconnect, useSendTransaction, useReadContract, useWriteContract, useSwitchChain, useBalance } from "wagmi";
 import { encodeFunctionData, Hex } from "viem";
 import { appendBuilderCode, BUILDER_CODE } from "@/lib/builderCode";
 import { SUPPORTED_TOKENS } from "@/lib/tokens";
@@ -260,6 +260,25 @@ export default function Home() {
   const [error, setError] = useState("");
   const [txHash, setTxHash] = useState("");
 
+  // User Balance
+  const { data: balanceData } = useBalance({
+    address: address,
+    token: inputToken.address ? (inputToken.address as `0x${string}`) : undefined,
+  });
+
+  const handleMax = () => {
+    if (!balanceData) return;
+    if (!inputToken.address) {
+      // Native ETH: reserve 0.005 ETH for gas
+      const reserve = 5000000000000000n; // 0.005 ETH
+      const maxVal = balanceData.value > reserve ? balanceData.value - reserve : 0n;
+      setAmount(fmtAmt(maxVal, inputToken.decimals));
+    } else {
+      // ERC20
+      setAmount(fmtAmt(balanceData.value, inputToken.decimals));
+    }
+  };
+
   // Close dropdowns on outside click
   const inputDDRef = useRef<HTMLDivElement>(null);
   const outputDDRef = useRef<HTMLDivElement>(null);
@@ -449,7 +468,24 @@ export default function Home() {
 
             {/* Input */}
             <div className="bg-black/30 border border-white/[0.04] rounded-2xl p-4">
-              <label className="text-xs text-zinc-500 font-medium mb-2 block">You sell</label>
+              <div className="flex justify-between items-center mb-2">
+                <label className="text-xs text-zinc-500 font-medium">You sell</label>
+                {isConnected && balanceData && (
+                  <div className="flex items-center gap-1.5 text-[11px] text-zinc-500">
+                    <span>
+                      Balance: {parseFloat(balanceData.formatted || "0").toLocaleString(undefined, {
+                        maximumFractionDigits: 6,
+                      })}
+                    </span>
+                    <button
+                      onClick={handleMax}
+                      className="text-[#0052ff] hover:text-[#0045d8] font-black uppercase text-[10px] bg-[#0052ff]/10 hover:bg-[#0052ff]/20 px-1.5 py-0.5 rounded transition-all"
+                    >
+                      Max
+                    </button>
+                  </div>
+                )}
+              </div>
               <div className="flex items-center gap-3">
                 <input
                   type="number"
