@@ -22,7 +22,7 @@ import {
 
 // ─── Wallet Button ───────────────────────────────────────────────────────────
 // Only show these wallet names
-const ALLOWED_WALLETS = ["coinbase wallet", "metamask", "injected"];
+const ALLOWED_WALLETS = ["coinbase", "metamask", "rabby", "injected"];
 
 function WalletButton() {
   const { address, isConnected } = useAccount();
@@ -34,13 +34,16 @@ function WalletButton() {
 
   // Filter to only Coinbase, MetaMask, Rabby/Injected
   const filteredConnectors = connectors.filter((c) => {
-    const n = c.name.toLowerCase();
-    return ALLOWED_WALLETS.some((w) => n.includes(w));
+    const id = c.id.toLowerCase();
+    const name = c.name.toLowerCase();
+    return ALLOWED_WALLETS.some((w) => id.includes(w) || name.includes(w));
   });
-  // Dedupe by name
+
+  // Dedupe by normalized name or id
   const seen = new Set<string>();
   const uniqueConnectors = filteredConnectors.filter((c) => {
-    const key = c.name.toLowerCase();
+    const key = c.name.toLowerCase().includes("coinbase") ? "coinbase" : 
+                c.name.toLowerCase().includes("metamask") ? "metamask" : c.id;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -113,10 +116,14 @@ function WalletButton() {
             </div>
             <div className="flex flex-col gap-3">
               {uniqueConnectors.map((connector) => {
-                const n = connector.name.toLowerCase();
-                const icon = n.includes("coinbase") ? "🔵" : n.includes("metamask") ? "🦊" : "🐰";
-                const label = n.includes("coinbase") ? "Coinbase Wallet" : n.includes("metamask") ? "MetaMask" : "Rabby / Browser Wallet";
-                const desc = n.includes("coinbase") ? "Smart Wallet or EOA" : n.includes("metamask") ? "Browser extension" : "Injected browser wallet";
+                const id = connector.id.toLowerCase();
+                const name = connector.name.toLowerCase();
+                const isCoinbase = id.includes("coinbase") || name.includes("coinbase");
+                const isMetaMask = id.includes("metamask") || name.includes("metamask");
+
+                const icon = isCoinbase ? "🔵" : isMetaMask ? "🦊" : "🐰";
+                const label = isCoinbase ? "Coinbase Wallet" : isMetaMask ? "MetaMask" : "Rabby / Browser Wallet";
+                const desc = isCoinbase ? "Smart Wallet or EOA" : isMetaMask ? "Browser extension" : "Injected browser wallet";
                 return (
                   <button
                     key={connector.uid}
@@ -433,10 +440,6 @@ export default function Home() {
                 <ArrowRightLeft className="h-5 w-5 text-[#0052ff]" />
                 Swap
               </h1>
-              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-[#0052ff]/10 border border-[#0052ff]/20 rounded-full">
-                <Sparkles className="h-3 w-3 text-[#0052ff]" />
-                <span className="text-[10px] font-bold text-[#0052ff]">Builder Code Active</span>
-              </div>
             </div>
 
             {/* Input */}
@@ -569,22 +572,6 @@ export default function Home() {
                   {isSwapping ? <><Loader2 className="h-4 w-4 animate-spin" /> Swapping...</> : "Swap"}
                 </button>
               )}
-            </div>
-          </div>
-
-          {/* Builder Code Attribution Card */}
-          <div className="bg-[#0c0d14]/60 border border-white/[0.04] rounded-2xl px-4 py-3.5 flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-[#0052ff]/10 flex items-center justify-center shrink-0">
-              <Sparkles className="h-4 w-4 text-[#0052ff]" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-zinc-300">Builder Code Attribution</p>
-              <p className="text-[11px] text-zinc-500 mt-0.5">
-                Every swap appends <code className="bg-white/5 px-1 py-0.5 rounded text-[#0052ff] font-bold">{BUILDER_CODE}</code> to your transaction for tracking on{" "}
-                <a href="https://www.base.org/builder-rewards" target="_blank" rel="noopener noreferrer" className="underline hover:text-zinc-300">
-                  Base Builder Rewards
-                </a>
-              </p>
             </div>
           </div>
 
