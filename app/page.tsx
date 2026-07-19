@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useAccount, useConnect, useDisconnect, useSendTransaction, useReadContract, useWriteContract } from "wagmi";
+import { useAccount, useConnect, useDisconnect, useSendTransaction, useReadContract, useWriteContract, useSwitchChain } from "wagmi";
 import { encodeFunctionData, Hex } from "viem";
 import { appendBuilderCode, BUILDER_CODE } from "@/lib/builderCode";
 import { SUPPORTED_TOKENS } from "@/lib/tokens";
@@ -39,11 +39,15 @@ function WalletButton() {
     return ALLOWED_WALLETS.some((w) => id.includes(w) || name.includes(w));
   });
 
-  // Dedupe by normalized name or id
+  // Dedupe by normalized category
   const seen = new Set<string>();
   const uniqueConnectors = filteredConnectors.filter((c) => {
-    const key = c.name.toLowerCase().includes("coinbase") ? "coinbase" : 
-                c.name.toLowerCase().includes("metamask") ? "metamask" : c.id;
+    const id = c.id.toLowerCase();
+    const name = c.name.toLowerCase();
+    
+    const key = (id.includes("coinbase") || name.includes("coinbase")) ? "coinbase" :
+                (id.includes("metamask") || name.includes("metamask")) ? "metamask" : "injected";
+
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -244,7 +248,8 @@ function fmtAmt(amount: bigint, decimals: number): string {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function Home() {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected, chain } = useAccount();
+  const { switchChain } = useSwitchChain();
 
   // Swap state
   const [amount, setAmount] = useState("");
@@ -281,7 +286,7 @@ export default function Home() {
   const path = buildPath();
 
   // Quote
-  const { data: amountsOut } = useReadContract({
+  const { data: amountsOut, isLoading: isQuoteLoading } = useReadContract({
     address: UNISWAP_V2_ROUTER,
     abi: ROUTER_ABI,
     functionName: "getAmountsOut",
@@ -547,13 +552,35 @@ export default function Home() {
               </div>
             )}
 
-            {/* Action Button */}
+             {/* Action Button */}
             <div className="mt-4">
               {!isConnected ? (
-                <WalletButton />
+                <button
+                  disabled
+                  className="w-full bg-white/5 border border-white/10 text-zinc-500 font-bold py-4 rounded-2xl cursor-not-allowed text-sm flex items-center justify-center gap-2"
+                >
+                  <Wallet className="h-4 w-4 text-zinc-500" />
+                  Connect Wallet in Header
+                </button>
+              ) : chain?.id !== 8453 ? (
+                <button
+                  onClick={() => switchChain({ chainId: 8453 })}
+                  className="w-full bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-4 rounded-2xl transition-all text-sm shadow-lg shadow-yellow-600/30 active:scale-[0.98]"
+                >
+                  Switch Network to Base
+                </button>
               ) : !amount || Number(amount) <= 0 ? (
                 <button disabled className="w-full bg-white/5 border border-white/10 text-zinc-500 font-bold py-4 rounded-2xl cursor-not-allowed text-sm">
                   Enter an amount
+                </button>
+              ) : isQuoteLoading ? (
+                <button disabled className="w-full bg-white/5 border border-white/10 text-zinc-400 font-bold py-4 rounded-2xl cursor-not-allowed text-sm flex items-center justify-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />
+                  Fetching best price...
+                </button>
+              ) : outWei === 0n ? (
+                <button disabled className="w-full bg-white/5 border border-white/10 text-red-400 font-bold py-4 rounded-2xl cursor-not-allowed text-sm">
+                  Insufficient liquidity
                 </button>
               ) : !isApproved ? (
                 <button
