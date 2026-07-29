@@ -1080,6 +1080,14 @@ export default function Home() {
               >
                 Pools
               </button>
+              <a
+                href="https://bridge.base.org"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3.5 py-1.5 text-xs font-bold rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 transition-all flex items-center gap-1.5"
+              >
+                Bridge <ExternalLink className="h-3 w-3 text-[#01C38E]" />
+              </a>
             </nav>
           </div>
           <WalletButton onConnectClick={() => setShowConnectModal(true)} />
@@ -1148,6 +1156,29 @@ export default function Home() {
                       Every swap appends standard Base Builder attribution for ecosystem fee distribution.
                     </p>
                   </div>
+                </div>
+
+                {/* Official Base Bridge CTA Card */}
+                <div className="bg-gradient-to-br from-[#0f172a] to-[#1e293b] border border-[#01C38E]/30 rounded-2xl p-5 backdrop-blur-xl relative overflow-hidden group">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-bold text-white text-sm flex items-center gap-2">
+                      <Layers className="h-4 w-4 text-[#01C38E]" /> Official Base Bridge
+                    </span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#01C38E]/20 text-[#01C38E] border border-[#01C38E]/30">
+                      Ethereum ↔ Base
+                    </span>
+                  </div>
+                  <p className="text-zinc-400 text-xs mb-3.5 leading-relaxed">
+                    Need to transfer ETH or USDC from Ethereum Mainnet to Base? Use the Official Coinbase Base Bridge.
+                  </p>
+                  <a
+                    href="https://bridge.base.org"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full bg-[#01C38E] hover:bg-[#00ab7c] text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow-md shadow-[#01C38E]/20 active:scale-95"
+                  >
+                    Bridge Assets to Base <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
                 </div>
 
                 {/* Live Protocol Stats Box */}
