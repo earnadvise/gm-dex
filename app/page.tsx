@@ -1772,23 +1772,23 @@ export default function Home() {
                     </span>
                   </div>
                   <div className="flex justify-between items-center border-t border-white/5 pt-2">
-                    <span className="text-zinc-500">Official Directory</span>
-                    <span className="font-bold text-white font-mono text-[11px] truncate max-w-[200px]">docs.base.org</span>
+                    <span className="text-zinc-500">Bridge Provider</span>
+                    <span className="font-bold text-white font-mono text-xs">superbridge.app</span>
                   </div>
                   <div className="flex justify-between items-center border-t border-white/5 pt-2">
                     <span className="text-zinc-500">Security</span>
-                    <span className="font-bold text-white">Coinbase Verified Bridges</span>
+                    <span className="font-bold text-white">OP Stack & Base Native Bridge</span>
                   </div>
                 </div>
 
                 <a
-                  href="https://docs.base.org/base-chain/network-information/ecosystem-bridges"
+                  href="https://superbridge.app/"
                   target="_blank"
                   rel="noreferrer"
                   className="w-full bg-[#01C38E] hover:bg-[#00ab7c] text-white font-extrabold py-4 rounded-2xl transition-all text-sm flex items-center justify-center gap-2 shadow-xl shadow-[#01C38E]/30 active:scale-[0.98] cursor-pointer"
                 >
                   <Zap className="h-4 w-4" />
-                  Launch Base Ecosystem Bridges <ExternalLink className="h-4 w-4" />
+                  Launch Superbridge <ExternalLink className="h-4 w-4" />
                 </a>
               </div>
             </div>
