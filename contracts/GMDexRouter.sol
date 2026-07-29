@@ -202,6 +202,22 @@ contract GMDexRouter is Ownable {
         );
     }
 
+    // Rescue any ERC20 tokens stuck in the contract (only owner)
+    function rescueERC20(address tokenAddress) external onlyOwner {
+        IERC20 token = IERC20(tokenAddress);
+        uint256 balance = token.balanceOf(address(this));
+        require(balance > 0, "No tokens to rescue");
+        token.safeTransfer(msg.sender, balance);
+    }
+
+    // Rescue any native ETH stuck in the contract (only owner)
+    function rescueETH() external onlyOwner {
+        uint256 balance = address(this).balance;
+        require(balance > 0, "No ETH to rescue");
+        (bool success, ) = payable(msg.sender).call{value: balance}("");
+        require(success, "ETH rescue failed");
+    }
+
     // Receive function to accept ETH
     receive() external payable {}
 }
