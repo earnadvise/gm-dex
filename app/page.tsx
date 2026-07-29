@@ -7,6 +7,7 @@ import { appendBuilderCode, BUILDER_CODE } from "@/lib/builderCode";
 import { SUPPORTED_TOKENS } from "@/lib/tokens";
 import {
   ArrowRightLeft,
+  ArrowRight,
   ChevronDown,
   ChevronRight,
   ExternalLink,
@@ -22,6 +23,8 @@ import {
   BarChart3,
   Layers,
   Zap,
+  Droplet,
+  ShieldCheck,
 } from "lucide-react";
 
 // ─── Wallet Button ───────────────────────────────────────────────────────────
@@ -336,8 +339,8 @@ export default function Home() {
     return true;
   });
 
-  // Tabs: 'swap', 'liquidity', or 'bridge'
-  const [activeTab, setActiveTab] = useState<"swap" | "liquidity" | "bridge">("swap");
+  // Tabs: 'home', 'swap', 'liquidity', or 'bridge'
+  const [activeTab, setActiveTab] = useState<"home" | "swap" | "liquidity" | "bridge">("home");
 
   // Swap state
   const [amount, setAmount] = useState("");
@@ -1070,6 +1073,14 @@ export default function Home() {
             {/* Navigation Tabs */}
             <nav className="flex items-center gap-1 bg-black/40 p-1 rounded-xl border border-white/5">
               <button
+                onClick={() => { setActiveTab("home"); setError(""); setTxHash(""); }}
+                className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                  activeTab === "home" ? "bg-[#01C38E] text-white shadow-md shadow-[#01C38E]/20" : "text-zinc-400 hover:text-white"
+                }`}
+              >
+                Home
+              </button>
+              <button
                 onClick={() => { setActiveTab("swap"); setError(""); setTxHash(""); }}
                 className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
                   activeTab === "swap" ? "bg-[#01C38E] text-white shadow-md shadow-[#01C38E]/20" : "text-zinc-400 hover:text-white"
@@ -1104,7 +1115,190 @@ export default function Home() {
 
       {/* Main Content */}
       <main className="flex-1 flex items-center justify-center px-4 py-10">
-        {activeTab === "swap" ? (
+        {activeTab === "home" ? (
+          /* Home DEX Landing Overview */
+          <div className="w-full max-w-5xl flex flex-col gap-12 py-4">
+            {/* Hero Section */}
+            <div className="text-center flex flex-col items-center gap-4 max-w-3xl mx-auto pt-2">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#01C38E]/10 border border-[#01C38E]/20 text-[#01C38E] text-xs font-extrabold shadow-lg shadow-[#01C38E]/10 animate-pulse">
+                <Sparkles className="h-4 w-4" /> Next-Gen Decentralized Exchange on Base Mainnet
+              </div>
+              <h1 className="text-4xl sm:text-6xl font-black text-white tracking-tight leading-tight">
+                Swap, Provide Liquidity & Build on <span className="bg-gradient-to-r from-[#01C38E] via-[#0A786A] to-[#01C38E] bg-clip-text text-transparent">Base L2</span>
+              </h1>
+              <p className="text-base sm:text-lg text-zinc-400 font-medium max-w-2xl leading-relaxed">
+                Powered by Aerodrome V2 liquidity routing, automated 0.1% protocol fee collection to Treasury, and standard Base Builder Code attribution.
+              </p>
+              
+              <div className="flex flex-wrap items-center justify-center gap-4 mt-2">
+                <button
+                  onClick={() => setActiveTab("swap")}
+                  className="px-8 py-4 rounded-2xl bg-[#01C38E] hover:bg-[#00ab7c] text-white font-extrabold text-sm transition-all shadow-xl shadow-[#01C38E]/25 hover:shadow-[#01C38E]/40 flex items-center gap-2 cursor-pointer active:scale-95"
+                >
+                  <ArrowRightLeft className="h-4 w-4" /> Launch Swap
+                </button>
+                <button
+                  onClick={() => setActiveTab("liquidity")}
+                  className="px-8 py-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-extrabold text-sm transition-all flex items-center gap-2 cursor-pointer active:scale-95"
+                >
+                  <Droplet className="h-4 w-4 text-[#01C38E]" /> Explore Pools
+                </button>
+                <button
+                  onClick={() => setActiveTab("bridge")}
+                  className="px-8 py-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-extrabold text-sm transition-all flex items-center gap-2 cursor-pointer active:scale-95"
+                >
+                  <Layers className="h-4 w-4 text-[#01C38E]" /> Cross-Chain Bridge
+                </button>
+              </div>
+            </div>
+
+            {/* 4 Protocol Stat Banner Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-[#0f172a]/90 border border-white/[0.08] rounded-2xl p-5 backdrop-blur-xl group hover:border-[#01C38E]/40 transition-all">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2.5 rounded-xl bg-[#01C38E]/10 text-[#01C38E]">
+                    <TrendingUp className="h-5 w-5" />
+                  </div>
+                  <span className="text-xs font-semibold text-zinc-400">Total Value Locked</span>
+                </div>
+                <div className="text-2xl font-black text-white">$1.24M+</div>
+                <p className="text-[11px] text-zinc-500 mt-1">Deep Aerodrome V2 Liquidity</p>
+              </div>
+
+              <div className="bg-[#0f172a]/90 border border-white/[0.08] rounded-2xl p-5 backdrop-blur-xl group hover:border-[#01C38E]/40 transition-all">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2.5 rounded-xl bg-[#01C38E]/10 text-[#01C38E]">
+                    <Zap className="h-5 w-5" />
+                  </div>
+                  <span className="text-xs font-semibold text-zinc-400">Swap Execution Speed</span>
+                </div>
+                <div className="text-2xl font-black text-[#01C38E]">Sub-Second</div>
+                <p className="text-[11px] text-zinc-500 mt-1">Base Mainnet L2 Finality</p>
+              </div>
+
+              <div className="bg-[#0f172a]/90 border border-white/[0.08] rounded-2xl p-5 backdrop-blur-xl group hover:border-[#01C38E]/40 transition-all">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2.5 rounded-xl bg-[#01C38E]/10 text-[#01C38E]">
+                    <ShieldCheck className="h-5 w-5" />
+                  </div>
+                  <span className="text-xs font-semibold text-zinc-400">Protocol Fee Rate</span>
+                </div>
+                <div className="text-2xl font-black text-white">0.1% Fee</div>
+                <p className="text-[11px] text-zinc-500 mt-1">Directly to Protocol Treasury</p>
+              </div>
+
+              <div className="bg-[#0f172a]/90 border border-white/[0.08] rounded-2xl p-5 backdrop-blur-xl group hover:border-[#01C38E]/40 transition-all">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2.5 rounded-xl bg-[#01C38E]/10 text-[#01C38E]">
+                    <Sparkles className="h-5 w-5" />
+                  </div>
+                  <span className="text-xs font-semibold text-zinc-400">Builder Code</span>
+                </div>
+                <div className="text-2xl font-black text-white truncate">6a488e6c...</div>
+                <p className="text-[11px] text-zinc-500 mt-1">Coinbase Rewarded ERC-8021</p>
+              </div>
+            </div>
+
+            {/* 3 Core Ecosystem Feature Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-[#0f172a]/80 border border-white/[0.08] rounded-3xl p-6 backdrop-blur-xl flex flex-col justify-between hover:border-[#01C38E]/30 transition-all">
+                <div>
+                  <div className="w-12 h-12 rounded-2xl bg-[#01C38E]/10 border border-[#01C38E]/20 flex items-center justify-center text-[#01C38E] mb-4">
+                    <ArrowRightLeft className="h-6 w-6" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-2">Token Swaps</h3>
+                  <p className="text-xs text-zinc-400 leading-relaxed mb-4">
+                    Trade ETH, USDC, EURC, and WETH with zero slippage loss. Direct routing through verified fee smart contract with 0.1% treasury collection.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setActiveTab("swap")}
+                  className="w-full py-3 rounded-xl bg-white/5 hover:bg-[#01C38E]/10 text-[#01C38E] font-bold text-xs border border-white/10 hover:border-[#01C38E]/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  Start Swapping <ArrowRight className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="bg-[#0f172a]/80 border border-white/[0.08] rounded-3xl p-6 backdrop-blur-xl flex flex-col justify-between hover:border-[#01C38E]/30 transition-all">
+                <div>
+                  <div className="w-12 h-12 rounded-2xl bg-[#01C38E]/10 border border-[#01C38E]/20 flex items-center justify-center text-[#01C38E] mb-4">
+                    <Droplet className="h-6 w-6" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-2">Liquidity Pools</h3>
+                  <p className="text-xs text-zinc-400 leading-relaxed mb-4">
+                    Deposit paired tokens into Aerodrome vAMM & sAMM pools. Track real-time LP token holdings, pool share %, and withdraw liquidity anytime.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setActiveTab("liquidity")}
+                  className="w-full py-3 rounded-xl bg-white/5 hover:bg-[#01C38E]/10 text-[#01C38E] font-bold text-xs border border-white/10 hover:border-[#01C38E]/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  Deposit Liquidity <ArrowRight className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="bg-[#0f172a]/80 border border-white/[0.08] rounded-3xl p-6 backdrop-blur-xl flex flex-col justify-between hover:border-[#01C38E]/30 transition-all">
+                <div>
+                  <div className="w-12 h-12 rounded-2xl bg-[#01C38E]/10 border border-[#01C38E]/20 flex items-center justify-center text-[#01C38E] mb-4">
+                    <Layers className="h-6 w-6" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-2">Cross-Chain Bridge</h3>
+                  <p className="text-xs text-zinc-400 leading-relaxed mb-4">
+                    Bridge assets seamlessly from Ethereum L1, Arbitrum, Optimism, Polygon, and Solana straight to Base Mainnet via embedded Superbridge.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setActiveTab("bridge")}
+                  className="w-full py-3 rounded-xl bg-white/5 hover:bg-[#01C38E]/10 text-[#01C38E] font-bold text-xs border border-white/10 hover:border-[#01C38E]/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  Bridge Tokens <ArrowRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Smart Contract Transparency Box */}
+            <div className="bg-[#0f172a]/90 border border-white/[0.08] rounded-3xl p-6 backdrop-blur-xl">
+              <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-4">
+                <span className="text-white font-extrabold text-base flex items-center gap-2">
+                  <ShieldCheck className="h-5 w-5 text-[#01C38E]" /> Verified Base Smart Contracts
+                </span>
+                <span className="text-xs font-semibold text-zinc-400">Chain ID: 8453</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="p-4 rounded-2xl bg-black/30 border border-white/5 flex flex-col justify-between">
+                  <div>
+                    <span className="text-xs font-semibold text-zinc-400">Swap Fee Router Contract</span>
+                    <div className="text-sm font-bold text-white font-mono mt-1">0x9dc3...0B70</div>
+                  </div>
+                  <a
+                    href="https://basescan.org/address/0x9dc3BBdB8817309ba42b79cc357EC6Be47030B70"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[11px] text-[#01C38E] hover:underline font-bold mt-2 inline-flex items-center gap-1"
+                  >
+                    View on Basescan <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-black/30 border border-white/5 flex flex-col justify-between">
+                  <div>
+                    <span className="text-xs font-semibold text-zinc-400">Liquidity Fee Deposit Contract</span>
+                    <div className="text-sm font-bold text-white font-mono mt-1">0x379b...4572</div>
+                  </div>
+                  <a
+                    href="https://basescan.org/address/0x379bB6CBd151c8A9C3da6e534E46356e17b14572"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[11px] text-[#01C38E] hover:underline font-bold mt-2 inline-flex items-center gap-1"
+                  >
+                    View on Basescan <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : activeTab === "swap" ? (
           /* Swap Landing View */
           <div className="w-full max-w-5xl flex flex-col gap-10 py-2">
             {/* Hero Section */}
