@@ -360,6 +360,11 @@ export default function Home() {
   const [removeLpAmount, setRemoveLpAmount] = useState("");
   const [showPoolModal, setShowPoolModal] = useState(false);
 
+  // Bridge state
+  const [bridgeFromChain, setBridgeFromChain] = useState("1"); // Ethereum Mainnet
+  const [bridgeToken, setBridgeToken] = useState("ETH");
+  const [bridgeAmount, setBridgeAmount] = useState("");
+
   // User Balance (Swap)
   const { data: balanceData, refetch: refetchBalance } = useBalance({
     address: address,
@@ -1616,26 +1621,107 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Embedded Fee-Earning Bridge Widget Container */}
+            {/* Native Fee-Earning Bridge Widget Container */}
             <div className="w-full flex flex-col items-center gap-4">
-              <div className="w-full max-w-[480px] bg-[#0f172a]/90 border border-white/[0.08] rounded-3xl p-4 sm:p-6 backdrop-blur-xl shadow-2xl relative overflow-hidden">
-                <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-4">
+              <div className="w-full max-w-[480px] bg-[#0f172a]/90 border border-white/[0.08] rounded-3xl p-6 backdrop-blur-xl shadow-2xl relative overflow-hidden">
+                <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-5">
                   <span className="text-white font-extrabold text-lg flex items-center gap-2">
                     <Layers className="h-5 w-5 text-[#01C38E]" /> Cross-Chain Bridge
                   </span>
                   <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[#01C38E]/10 border border-[#01C38E]/20 text-[#01C38E]">
-                    Powered by LI.FI
+                    0.1% Treasury Fee
                   </span>
                 </div>
 
-                <div className="w-full h-[620px] rounded-2xl overflow-hidden bg-black/40 border border-white/5 relative">
-                  <iframe
-                    src="https://jumper.exchange/embed?theme=dark&toChain=8453&integrator=gm-dex&fee=0.001"
-                    title="GM DEX Bridge"
-                    className="w-full h-full border-0 rounded-2xl"
-                    allow="clipboard-write"
-                  ></iframe>
+                {/* From Chain */}
+                <div className="bg-black/30 border border-white/[0.04] rounded-2xl p-4 mb-3">
+                  <label className="text-xs text-zinc-500 font-medium mb-2 block">From Network</label>
+                  <div className="flex items-center justify-between">
+                    <select
+                      value={bridgeFromChain}
+                      onChange={(e) => setBridgeFromChain(e.target.value)}
+                      className="bg-[#0c1222] border border-white/10 text-white font-bold text-sm rounded-xl px-3 py-2 outline-none cursor-pointer hover:border-[#01C38E]/40 transition-all"
+                    >
+                      <option value="1">Ethereum Mainnet (L1)</option>
+                      <option value="42161">Arbitrum One</option>
+                      <option value="10">Optimism</option>
+                      <option value="137">Polygon</option>
+                      <option value="solana">Solana</option>
+                    </select>
+                    <span className="text-xs font-semibold text-zinc-400">Source</span>
+                  </div>
                 </div>
+
+                {/* Arrow Down */}
+                <div className="flex justify-center -my-2 relative z-10">
+                  <div className="w-8 h-8 rounded-full bg-[#13141c] border-2 border-[#0f172a] flex items-center justify-center text-[#01C38E] font-bold">
+                    ↓
+                  </div>
+                </div>
+
+                {/* To Chain (Fixed Base) */}
+                <div className="bg-black/30 border border-white/[0.04] rounded-2xl p-4 mt-1 mb-4">
+                  <label className="text-xs text-zinc-500 font-medium mb-2 block">To Network (Destination)</label>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 font-bold text-white text-sm bg-white/5 border border-white/10 px-3 py-2 rounded-xl">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#01C38E]" /> Base Mainnet
+                    </div>
+                    <span className="text-xs font-semibold text-[#01C38E]">Chain ID: 8453</span>
+                  </div>
+                </div>
+
+                {/* Amount Input */}
+                <div className="bg-black/30 border border-white/[0.04] rounded-2xl p-4 mb-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-xs text-zinc-500 font-medium">Bridge Amount</label>
+                    <select
+                      value={bridgeToken}
+                      onChange={(e) => setBridgeToken(e.target.value)}
+                      className="bg-[#0c1222] border border-white/10 text-white font-bold text-xs rounded-lg px-2 py-1 outline-none cursor-pointer"
+                    >
+                      <option value="ETH">ETH</option>
+                      <option value="USDC">USDC</option>
+                      <option value="USDT">USDT</option>
+                      <option value="EURC">EURC</option>
+                    </select>
+                  </div>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    placeholder="0.0"
+                    value={bridgeAmount}
+                    onChange={(e) => setBridgeAmount(e.target.value)}
+                    className="bg-transparent text-[26px] font-bold text-white outline-none w-full placeholder-zinc-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                </div>
+
+                {/* Route & Fee Details Box */}
+                <div className="bg-gradient-to-br from-[#01C38E]/5 to-[#0A786A]/5 border border-[#01C38E]/15 rounded-2xl p-4 mb-5 flex flex-col gap-2">
+                  <div className="flex justify-between items-center text-xs text-zinc-400">
+                    <span>Cross-Chain Protocol</span>
+                    <span className="font-bold text-white">LI.FI Router</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs text-zinc-400">
+                    <span>Protocol Fee</span>
+                    <span className="font-bold text-[#01C38E]">0.1% (Automated Treasury Fee)</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs text-zinc-400">
+                    <span>Estimated Transfer Time</span>
+                    <span className="font-bold text-white">~1 to 2 Minutes</span>
+                  </div>
+                </div>
+
+                {/* Primary Launch Button */}
+                <button
+                  onClick={() => {
+                    const url = `https://jumper.exchange/embed?theme=dark&fromChain=${bridgeFromChain}&toChain=8453&integrator=gm-dex&fee=0.001`;
+                    window.open(url, "_blank", "width=480,height=680,scrollbars=yes,resizable=yes");
+                  }}
+                  className="w-full bg-[#01C38E] hover:bg-[#00ab7c] text-white font-bold py-4 rounded-2xl transition-all text-sm flex items-center justify-center gap-2 shadow-lg shadow-[#01C38E]/30 active:scale-[0.98] cursor-pointer"
+                >
+                  <Zap className="h-4 w-4" />
+                  Launch Bridge & Transfer Assets <ExternalLink className="h-4 w-4" />
+                </button>
               </div>
             </div>
           </div>
