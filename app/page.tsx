@@ -154,9 +154,9 @@ function WalletButton() {
   );
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
 const WETH = "0x4200000000000000000000000000000000000006";
-const UNISWAP_V2_ROUTER = "0x4752ba5dbc23f44d87826276bf6fd6b1c372ad24" as `0x${string}`;
+const UNISWAP_V2_ROUTER = "0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24" as `0x${string}`;
+const GM_DEX_ROUTER = "0xFF8f219Da62A283AB7b4aE1D59fc908b9A9019B7" as `0x${string}`;
 
 const ERC20_ABI = [
   {
@@ -321,7 +321,7 @@ export default function Home() {
     address: inputToken.address as `0x${string}`,
     abi: ERC20_ABI,
     functionName: "allowance",
-    args: address && inputToken.address ? [address, UNISWAP_V2_ROUTER] : undefined,
+    args: address && inputToken.address ? [address, GM_DEX_ROUTER] : undefined,
     query: { enabled: isConnected && !!address && !!inputToken.address },
   });
 
@@ -339,7 +339,7 @@ export default function Home() {
         address: inputToken.address as `0x${string}`,
         abi: ERC20_ABI,
         functionName: "approve",
-        args: [UNISWAP_V2_ROUTER, amountWei],
+        args: [GM_DEX_ROUTER, amountWei],
       });
       setTimeout(() => refetchAllowance(), 3000);
     } catch (e: any) {
@@ -388,7 +388,7 @@ export default function Home() {
       const dataWithBuilder = appendBuilderCode(rawData);
 
       const tx = await sendSwap({
-        to: UNISWAP_V2_ROUTER,
+        to: GM_DEX_ROUTER,
         data: dataWithBuilder as Hex,
         value,
       });
@@ -435,8 +435,10 @@ export default function Home() {
       <header className="sticky top-0 z-50 w-full border-b border-white/5 bg-[#06070a]/60 backdrop-blur-md">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-[#0052ff] to-[#ffd700] p-[2px] shadow-lg shadow-[#0052ff]/20 overflow-hidden">
-              <img src="/logo.png" alt="GM DEX Logo" className="h-full w-full object-cover" />
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-[#0052ff] to-[#ffd700] p-[2px] shadow-lg shadow-[#0052ff]/20">
+              <div className="h-full w-full rounded-[10px] bg-[#06070a] flex items-center justify-center">
+                <Sun className="h-5 w-5 text-[#ffd700]" />
+              </div>
             </div>
             <div>
               <span className="font-extrabold text-xl tracking-tight bg-gradient-to-r from-white via-[#f4f6fa] to-zinc-400 bg-clip-text text-transparent">
