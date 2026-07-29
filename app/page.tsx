@@ -83,7 +83,8 @@ function WalletButton({ onConnectClick }: { onConnectClick: () => void }) {
 const WETH = "0x4200000000000000000000000000000000000006";
 const UNISWAP_V2_ROUTER = "0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24" as `0x${string}`;
 const GM_DEX_ROUTER = "0x9dc3BBdB8817309ba42b79cc357EC6Be47030B70" as `0x${string}`;
-const GM_DEX_LIQUIDITY = "0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43" as `0x${string}`;
+const GM_DEX_LIQUIDITY = "0x379bB6CBd151c8A9C3da6e534E46356e17b14572" as `0x${string}`;
+const AERO_ROUTER = "0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43" as `0x${string}`;
 const AERO_FACTORY = "0x420DD381b31aEf6683db6B902084cB0FFECe40Da" as `0x${string}`;
 
 const AERO_ROUTER_ABI = [
@@ -559,7 +560,7 @@ export default function Home() {
 
   // Query pool reserves from Aerodrome Router
   const { data: poolReserves } = useReadContract({
-    address: GM_DEX_LIQUIDITY,
+    address: AERO_ROUTER,
     abi: [
       {
         inputs: [
@@ -661,7 +662,7 @@ export default function Home() {
     address: poolAddress && poolAddress !== "0x0000000000000000000000000000000000000000" ? (poolAddress as `0x${string}`) : undefined,
     abi: ERC20_ABI,
     functionName: "allowance",
-    args: address ? [address, GM_DEX_LIQUIDITY] : undefined,
+    args: address ? [address, AERO_ROUTER] : undefined,
     query: { enabled: isConnected && !!address && !!poolAddress && poolAddress !== "0x0000000000000000000000000000000000000000" }
   });
 
@@ -677,7 +678,7 @@ export default function Home() {
         address: poolAddress as `0x${string}`,
         abi: ERC20_ABI,
         functionName: "approve",
-        args: [GM_DEX_LIQUIDITY, removeLpWei],
+        args: [AERO_ROUTER, removeLpWei],
       });
       setTimeout(() => refetchLpAllowance(), 3000);
     } catch (e: any) {
@@ -728,7 +729,7 @@ export default function Home() {
       }
 
       const tx = await sendSwap({
-        to: GM_DEX_LIQUIDITY,
+        to: AERO_ROUTER,
         data: rawData as Hex,
         value: 0n,
       });
