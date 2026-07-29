@@ -336,8 +336,8 @@ export default function Home() {
     return true;
   });
 
-  // Tabs: 'swap' or 'liquidity'
-  const [activeTab, setActiveTab] = useState<"swap" | "liquidity">("swap");
+  // Tabs: 'swap', 'liquidity', or 'bridge'
+  const [activeTab, setActiveTab] = useState<"swap" | "liquidity" | "bridge">("swap");
 
   // Swap state
   const [amount, setAmount] = useState("");
@@ -1080,14 +1080,17 @@ export default function Home() {
               >
                 Pools
               </button>
-              <a
-                href="https://bridge.base.org"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-3.5 py-1.5 text-xs font-bold rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 transition-all flex items-center gap-1.5"
+              <button
+                onClick={() => { setActiveTab("bridge"); setError(""); setTxHash(""); }}
+                className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${
+                  activeTab === "bridge" ? "bg-[#01C38E] text-white shadow-md shadow-[#01C38E]/20" : "text-zinc-400 hover:text-white"
+                }`}
               >
-                Bridge <ExternalLink className="h-3 w-3 text-[#01C38E]" />
-              </a>
+                Bridge
+                <span className="px-1.5 py-0.2 text-[9px] font-black uppercase rounded bg-[#01C38E]/20 text-[#01C38E]">
+                  0.1% Fee
+                </span>
+              </button>
             </nav>
           </div>
           <WalletButton onConnectClick={() => setShowConnectModal(true)} />
@@ -1158,27 +1161,25 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Official Base Bridge CTA Card */}
+                {/* Fee-Earning Cross-Chain Bridge CTA Card */}
                 <div className="bg-gradient-to-br from-[#0f172a] to-[#1e293b] border border-[#01C38E]/30 rounded-2xl p-5 backdrop-blur-xl relative overflow-hidden group">
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-bold text-white text-sm flex items-center gap-2">
-                      <Layers className="h-4 w-4 text-[#01C38E]" /> Official Base Bridge
+                      <Layers className="h-4 w-4 text-[#01C38E]" /> Multi-Chain Bridge
                     </span>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#01C38E]/20 text-[#01C38E] border border-[#01C38E]/30">
-                      Ethereum ↔ Base
+                      15+ Networks → Base
                     </span>
                   </div>
                   <p className="text-zinc-400 text-xs mb-3.5 leading-relaxed">
-                    Need to transfer ETH or USDC from Ethereum Mainnet to Base? Use the Official Coinbase Base Bridge.
+                    Need funds on Base? Bridge ETH, USDC, USDT & EURC instantly with best cross-chain rates.
                   </p>
-                  <a
-                    href="https://bridge.base.org"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full bg-[#01C38E] hover:bg-[#00ab7c] text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow-md shadow-[#01C38E]/20 active:scale-95"
+                  <button
+                    onClick={() => { setActiveTab("bridge"); setError(""); setTxHash(""); }}
+                    className="w-full bg-[#01C38E] hover:bg-[#00ab7c] text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow-md shadow-[#01C38E]/20 active:scale-95 cursor-pointer"
                   >
-                    Bridge Assets to Base <ExternalLink className="h-3.5 w-3.5" />
-                  </a>
+                    Launch Fee-Earning Bridge <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
                 </div>
 
                 {/* Live Protocol Stats Box */}
@@ -1384,7 +1385,7 @@ export default function Home() {
               </div>
             </div>
           </div>
-        ) : (
+        ) : activeTab === "liquidity" ? (
           /* Pools Landing Dashboard */
           <div className="w-full max-w-5xl flex flex-col gap-8 py-2">
             {/* Hero Banner */}
@@ -1546,6 +1547,95 @@ export default function Home() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* Fee-Earning Bridge View */
+          <div className="w-full max-w-5xl flex flex-col gap-8 py-2">
+            {/* Hero Banner */}
+            <div className="text-center flex flex-col items-center gap-3 max-w-2xl mx-auto">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#01C38E]/10 border border-[#01C38E]/20 text-[#01C38E] text-xs font-semibold">
+                <Layers className="h-3.5 w-3.5" /> Multi-Chain Asset Bridge
+              </div>
+              <h1 className="text-4xl sm:text-5xl font-black text-white tracking-tight">
+                Bridge Assets to Base
+              </h1>
+              <h2 className="text-3xl sm:text-4xl font-extrabold bg-gradient-to-r from-[#01C38E] via-[#0A786A] to-[#01C38E] bg-clip-text text-transparent">
+                Cross-Chain Liquidity Routing
+              </h2>
+              <p className="text-zinc-400 text-sm sm:text-base mt-1">
+                Bridge ETH, USDC, USDT & EURC from Ethereum, Arbitrum, Optimism, Solana & Polygon directly to Base with best rates.
+              </p>
+            </div>
+
+            {/* 4 Overview Bridge Stat Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-[#0f172a]/90 border border-white/[0.08] rounded-2xl p-5 backdrop-blur-xl group hover:border-[#01C38E]/30 transition-all">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 rounded-xl bg-[#01C38E]/10 text-[#01C38E]">
+                    <Layers className="h-5 w-5" />
+                  </div>
+                  <span className="text-xs font-semibold text-zinc-400">Supported Networks</span>
+                </div>
+                <div className="text-xl font-bold text-white">15+ EVM & Solana</div>
+                <p className="text-[11px] text-zinc-500 mt-1">Ethereum, Arbitrum, Optimism & more</p>
+              </div>
+
+              <div className="bg-[#0f172a]/90 border border-white/[0.08] rounded-2xl p-5 backdrop-blur-xl group hover:border-[#01C38E]/30 transition-all">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 rounded-xl bg-[#01C38E]/10 text-[#01C38E]">
+                    <Zap className="h-5 w-5" />
+                  </div>
+                  <span className="text-xs font-semibold text-zinc-400">Avg. Transfer Time</span>
+                </div>
+                <div className="text-xl font-bold text-white">&lt; 2 Minutes</div>
+                <p className="text-[11px] text-zinc-500 mt-1">Sub-minute fast liquidity relays</p>
+              </div>
+
+              <div className="bg-[#0f172a]/90 border border-white/[0.08] rounded-2xl p-5 backdrop-blur-xl group hover:border-[#01C38E]/30 transition-all">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 rounded-xl bg-[#01C38E]/10 text-[#01C38E]">
+                    <TrendingUp className="h-5 w-5" />
+                  </div>
+                  <span className="text-xs font-semibold text-zinc-400">Treasury Fee Share</span>
+                </div>
+                <div className="text-xl font-bold text-[#01C38E]">0.1% Fee</div>
+                <p className="text-[11px] text-zinc-500 mt-1">Directly paid to protocol treasury</p>
+              </div>
+
+              <div className="bg-[#0f172a]/90 border border-white/[0.08] rounded-2xl p-5 backdrop-blur-xl group hover:border-[#01C38E]/30 transition-all">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 rounded-xl bg-[#01C38E]/10 text-[#01C38E]">
+                    <Sparkles className="h-5 w-5" />
+                  </div>
+                  <span className="text-xs font-semibold text-zinc-400">Target Chain</span>
+                </div>
+                <div className="text-xl font-bold text-white">Base Mainnet</div>
+                <p className="text-[11px] text-zinc-500 mt-1">Chain ID: 8453 (Coinbase L2)</p>
+              </div>
+            </div>
+
+            {/* Embedded Fee-Earning Bridge Widget Container */}
+            <div className="w-full flex flex-col items-center gap-4">
+              <div className="w-full max-w-[480px] bg-[#0f172a]/90 border border-white/[0.08] rounded-3xl p-4 sm:p-6 backdrop-blur-xl shadow-2xl relative overflow-hidden">
+                <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-4">
+                  <span className="text-white font-extrabold text-lg flex items-center gap-2">
+                    <Layers className="h-5 w-5 text-[#01C38E]" /> Cross-Chain Bridge
+                  </span>
+                  <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[#01C38E]/10 border border-[#01C38E]/20 text-[#01C38E]">
+                    Powered by LI.FI
+                  </span>
+                </div>
+
+                <div className="w-full h-[620px] rounded-2xl overflow-hidden bg-black/40 border border-white/5 relative">
+                  <iframe
+                    src="https://jumper.exchange/embed?theme=dark&toChain=8453&integrator=gm-dex&fee=0.001"
+                    title="GM DEX Bridge"
+                    className="w-full h-full border-0 rounded-2xl"
+                    allow="clipboard-write"
+                  ></iframe>
+                </div>
               </div>
             </div>
           </div>
