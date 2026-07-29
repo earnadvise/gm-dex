@@ -435,10 +435,8 @@ export default function Home() {
       <header className="sticky top-0 z-50 w-full border-b border-white/5 bg-[#06070a]/60 backdrop-blur-md">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-[#0052ff] to-[#ffd700] p-[2px] shadow-lg shadow-[#0052ff]/20">
-              <div className="h-full w-full rounded-[10px] bg-[#06070a] flex items-center justify-center">
-                <Sun className="h-5 w-5 text-[#ffd700]" />
-              </div>
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-[#0052ff] to-[#ffd700] p-[2px] shadow-lg shadow-[#0052ff]/20 overflow-hidden">
+              <img src="/logo.png" alt="GM DEX Logo" className="h-full w-full object-cover" />
             </div>
             <div>
               <span className="font-extrabold text-xl tracking-tight bg-gradient-to-r from-white via-[#f4f6fa] to-zinc-400 bg-clip-text text-transparent">
