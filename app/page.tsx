@@ -83,6 +83,7 @@ function WalletButton({ onConnectClick }: { onConnectClick: () => void }) {
 const WETH = "0x4200000000000000000000000000000000000006";
 const UNISWAP_V2_ROUTER = "0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24" as `0x${string}`;
 const GM_DEX_ROUTER = "0x9dc3BBdB8817309ba42b79cc357EC6Be47030B70" as `0x${string}`;
+const GM_DEX_LIQUIDITY = "0x9dc3BBdB8817309ba42b79cc357EC6Be47030B70" as `0x${string}`;
 
 const ERC20_ABI = [
   {
@@ -445,7 +446,7 @@ export default function Home() {
     address: poolTokenA.address as `0x${string}`,
     abi: ERC20_ABI,
     functionName: "allowance",
-    args: address && poolTokenA.address ? [address, GM_DEX_ROUTER] : undefined,
+    args: address && poolTokenA.address ? [address, GM_DEX_LIQUIDITY] : undefined,
     query: { enabled: isConnected && !!address && !!poolTokenA.address },
   });
 
@@ -454,7 +455,7 @@ export default function Home() {
     address: poolTokenB.address as `0x${string}`,
     abi: ERC20_ABI,
     functionName: "allowance",
-    args: address && poolTokenB.address ? [address, GM_DEX_ROUTER] : undefined,
+    args: address && poolTokenB.address ? [address, GM_DEX_LIQUIDITY] : undefined,
     query: { enabled: isConnected && !!address && !!poolTokenB.address },
   });
 
@@ -470,7 +471,7 @@ export default function Home() {
         address: poolTokenA.address as `0x${string}`,
         abi: ERC20_ABI,
         functionName: "approve",
-        args: [GM_DEX_ROUTER, poolAmountAWei],
+        args: [GM_DEX_LIQUIDITY, poolAmountAWei],
       });
       setTimeout(() => refetchAllowanceA(), 3000);
     } catch (e: any) {
@@ -487,7 +488,7 @@ export default function Home() {
         address: poolTokenB.address as `0x${string}`,
         abi: ERC20_ABI,
         functionName: "approve",
-        args: [GM_DEX_ROUTER, poolAmountBWei],
+        args: [GM_DEX_LIQUIDITY, poolAmountBWei],
       });
       setTimeout(() => refetchAllowanceB(), 3000);
     } catch (e: any) {
@@ -546,7 +547,7 @@ export default function Home() {
       const dataWithBuilder = appendBuilderCode(rawData);
 
       const tx = await sendSwap({
-        to: GM_DEX_ROUTER,
+        to: GM_DEX_LIQUIDITY,
         data: dataWithBuilder as Hex,
         value,
       });
