@@ -1,98 +1,92 @@
-# ☀️ GM DEX
+# ☀️ GM DEX — Decentralized Exchange & Liquidity Protocol on Base
 
-> Daily GM streaks, soulbound milestone badges, and premium token swaps on Base.
-
-A Progressive Web App (PWA) built on Base using Next.js 16, Coinbase OnchainKit, Wagmi, and Hardhat.
+> High-performance DEX, Liquidity Pools, and Cross-Chain Asset Bridge built on **Base Mainnet**, powered by Aerodrome V2 liquidity routing, automated protocol fee collection, and Base Builder Code attribution.
 
 ---
 
-## Features
+## 🌟 Key Features
 
-- **Daily GM Streak** — Say GM once every 23 hours to maintain your streak and earn XP
-- **Soulbound Milestone Badges** — Auto-minted ERC-1155 badges at 7, 30, 100, and 365-day streaks with fully on-chain SVG metadata
-- **Token Swap** — Swap ETH, USDC, cbBTC, EURC, and DEGEN on Base via Coinbase OnchainKit
-- **On-chain Leaderboard** — Top 10 GM'ers tracked directly on-chain
-- **PWA Push Notifications** — Daily GM reminders via Web Push (VAPID)
-- **Multi-chain EVM** — Supports Base Mainnet, Base Sepolia, and local Hardhat node
-- **Demo Mode** — Fully functional simulation using LocalStorage when contracts aren't deployed
+- 🔄 **Token Swap Landing Dashboard** — Swap ETH, USDC, EURC, and more with zero slippage loss, sub-second finality, and 0.1% protocol fee collection directly to Treasury.
+- 💧 **XyloNet Pools Landing Page** — Provide liquidity to Aerodrome pools (`USDC/EURC`, `ETH/USDC`, `ETH/EURC`) with real-time LP position tracking, pool share percentage calculation, and automated deposit fee collection.
+- 🌉 **Multi-Chain Asset Bridge** — Integrated LI.FI / Jumper cross-chain bridge supporting 15+ EVM chains & Solana to Base Mainnet, with a 0.1% protocol fee routed to Treasury.
+- ⚡ **Ultra-Fast Balance Polling** — 2-second background auto-refetching for wallet balances, token allowances, and LP token holdings.
+- 🏷️ **Base Builder Code Attribution** — ERC-8021 standard transaction data suffix (`6a488e6c2876ee6c1138a856`) appended to all swaps and liquidity deposits for Coinbase Builder Rewards.
+- 🎨 **XyloNet Aesthetic** — Slate blue (`#0f172a`), mint green (`#01C38E`), and deep teal (`#0A786A`) glassmorphism dark theme.
 
 ---
 
-## Smart Contracts
+## 📜 Deployed Smart Contracts (Base Mainnet - Chain ID: 8453)
 
-| Contract | Description |
-|---|---|
-| `GMStreak.sol` | Tracks daily GMs, streaks, XP, and leaderboard |
-| `GMBadge.sol` | Soulbound ERC-1155 milestone badges with on-chain SVG metadata |
+| Contract / Address | Type | Role & Description |
+| :--- | :--- | :--- |
+| **`0x9dc3BBdB8817309ba42b79cc357EC6Be47030B70`** | `GMDexRouter` | **Swap Fee Router** — Collects 0.1% swap fee to Treasury and routes remaining swap to Aerodrome Router. |
+| **`0x379bB6CBd151c8A9C3da6e534E46356e17b14572`** | `AeroDexLiquidity` | **Liquidity Deposit Fee Router** — Collects deposit fee to Treasury and deposits liquidity into Aerodrome pools. |
+| **`0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43`** | `AeroRouter` | **Aerodrome V2 Router** — Used for price quote queries, reserve ratios, and LP token withdrawals. |
+| **`0x420DD381b31aEf6683db6B902084cB0FFECe40Da`** | `AeroFactory` | **Aerodrome Pool Factory** — Returns LP token addresses for pool reserve queries and balance tracking. |
+| **`0xAa81a036Bf5a2823dAA2Aadbcc66140fAb29CcE9`** | `Treasury` | **Protocol Treasury Wallet** — Receives all collected swap fees, deposit fees, and bridge fee shares. |
 
-### Deploy contracts
+---
 
-```bash
-# Deploy to Base Mainnet
-npx hardhat run scripts/deploy.ts --network base
+## 🏛️ System Architecture & Data Flow
 
-# Run tests on local Hardhat node
-npx hardhat test
+```mermaid
+graph TD
+    User[User Wallet] -->|Swap Request| SwapRouter["GM_DEX_ROUTER (0x9dc3...)"]
+    User -->|Add Liquidity| LiqRouter["AeroDexLiquidity (0x379b...)"]
+    User -->|Remove Liquidity| AeroRouter["Aerodrome Router (0xcF77...)"]
+    User -->|Cross-Chain Bridge| BridgeWidget["LI.FI Bridge (Jumper)"]
+
+    SwapRouter -->|0.1% Fee| Treasury["Treasury (0xAa81a...)"]
+    SwapRouter -->|Execute Swap| AeroRouter
+    LiqRouter -->|Deposit Fee| Treasury
+    LiqRouter -->|Add Liquidity| AeroRouter
+    BridgeWidget -->|0.1% Bridge Share| Treasury
+
+    SwapRouter -.->|Builder Code Suffix| BaseBuilder["Base Builder Code (6a488e6c...)"]
+    LiqRouter -.->|Builder Code Suffix| BaseBuilder
 ```
 
 ---
 
-## Getting Started
+## 🛠️ Technology Stack
 
-### 1. Install dependencies
+- **Core Framework**: [Next.js 16](https://nextjs.org) (App Router, Turbopack)
+- **Web3 Libraries**: [Wagmi v2](https://wagmi.sh) + [Viem](https://viem.sh)
+- **Smart Contracts**: Solidity ^0.8.20, Hardhat, OpenZeppelin
+- **Liquidity & Routing**: Aerodrome V2 (Base Mainnet)
+- **Cross-Chain Bridge**: LI.FI / Jumper Exchange Embed
+- **Styling**: Tailwind CSS v4 + Lucide React Icons
+- **Target Blockchain**: [Base Mainnet](https://base.org) (Chain ID: 8453)
+
+---
+
+## 🚀 Local Development Setup
+
+### 1. Clone & Install Dependencies
 
 ```bash
+git clone https://github.com/earnadvise/gm-dex.git
+cd gm-dex
 npm install
 ```
 
-### 2. Generate VAPID keys & init environment
-
-```bash
-node scripts/generate-vapid.js
-```
-
-This creates `.env.local` with VAPID keys. Add your other keys:
+### 2. Configure Environment Variables (`.env.local`)
 
 ```env
-NEXT_PUBLIC_CDP_API_KEY=your_coinbase_developer_platform_key
 NEXT_PUBLIC_RPC_URL=https://mainnet.base.org
-NEXT_PUBLIC_BUILDER_CODE=your_builder_code
-
-# Set after deploying contracts:
-NEXT_PUBLIC_GM_STREAK_ADDRESS=0x...
-NEXT_PUBLIC_GM_BADGE_ADDRESS=0x...
+NEXT_PUBLIC_BUILDER_CODE=6a488e6c2876ee6c1138a856
 ```
 
-### 3. Run locally
+### 3. Run Development Server
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
-
-> **Note:** If contract addresses are not set, the app runs in **Demo Mode** — all streak, XP, and badge features work locally via `localStorage`.
+Open [http://localhost:3000](http://localhost:3000) to view the application locally.
 
 ---
 
-## Tech Stack
-
-- **Framework**: [Next.js 16](https://nextjs.org) (App Router, Turbopack)
-- **Web3**: [Wagmi v2](https://wagmi.sh) + [Viem](https://viem.sh)
-- **Wallet & Swap**: [Coinbase OnchainKit](https://onchainkit.xyz)
-- **Smart Contracts**: [Hardhat](https://hardhat.org) + [OpenZeppelin](https://openzeppelin.com)
-- **Styling**: Tailwind CSS v4 with glassmorphism dark theme
-- **Push Notifications**: [web-push](https://github.com/web-push-libs/web-push) (VAPID)
-- **Chain**: [Base](https://base.org) (mainnet + Sepolia)
-
----
-
-## Builder Code Attribution
-
-Transaction attribution for OnchainKit swaps and GM calls is appended via `lib/builderCode.ts` using the `NEXT_PUBLIC_BUILDER_CODE` env variable (ERC-8021 standard).
-
----
-
-## License
+## 📄 License
 
 MIT
