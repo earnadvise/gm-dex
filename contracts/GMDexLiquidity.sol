@@ -81,38 +81,37 @@ contract GMDexLiquidity is Ownable {
         IERC20(tokenA).safeTransferFrom(msg.sender, address(this), amountADesired);
         IERC20(tokenB).safeTransferFrom(msg.sender, address(this), amountBDesired);
 
-        uint256 amountAAfterFee;
-        uint256 amountBAfterFee;
-        {
-            uint256 feeA = (amountADesired * feeBps) / 10000;
-            uint256 feeB = (amountBDesired * feeBps) / 10000;
-            amountAAfterFee = amountADesired - feeA;
-            amountBAfterFee = amountBDesired - feeB;
-            if (feeA > 0) IERC20(tokenA).safeTransfer(treasury, feeA);
-            if (feeB > 0) IERC20(tokenB).safeTransfer(treasury, feeB);
+        // Send fees to treasury (calculating inline)
+        if ((amountADesired * feeBps) / 10000 > 0) {
+            IERC20(tokenA).safeTransfer(treasury, (amountADesired * feeBps) / 10000);
+        }
+        if ((amountBDesired * feeBps) / 10000 > 0) {
+            IERC20(tokenB).safeTransfer(treasury, (amountBDesired * feeBps) / 10000);
         }
 
-        // Approve Uniswap Router
-        IERC20(tokenA).safeIncreaseAllowance(UNISWAP_V2_ROUTER, amountAAfterFee);
-        IERC20(tokenB).safeIncreaseAllowance(UNISWAP_V2_ROUTER, amountBAfterFee);
+        // Approve Uniswap Router (calculating inline)
+        IERC20(tokenA).safeIncreaseAllowance(UNISWAP_V2_ROUTER, amountADesired - ((amountADesired * feeBps) / 10000));
+        IERC20(tokenB).safeIncreaseAllowance(UNISWAP_V2_ROUTER, amountBDesired - ((amountBDesired * feeBps) / 10000));
 
         // Execute Add Liquidity
         (amountA, amountB, liquidity) = IUniswapV2Router02(UNISWAP_V2_ROUTER).addLiquidity(
             tokenA,
             tokenB,
-            amountAAfterFee,
-            amountBAfterFee,
+            amountADesired - ((amountADesired * feeBps) / 10000),
+            amountBDesired - ((amountBDesired * feeBps) / 10000),
             amountAMin,
             amountBMin,
             to,
             deadline
         );
 
-        // Transfer leftover tokens back to user
-        uint256 leftoverA = amountAAfterFee - amountA;
-        uint256 leftoverB = amountBAfterFee - amountB;
-        if (leftoverA > 0) IERC20(tokenA).safeTransfer(msg.sender, leftoverA);
-        if (leftoverB > 0) IERC20(tokenB).safeTransfer(msg.sender, leftoverB);
+        // Transfer leftover tokens back to user (calculating inline)
+        if ((amountADesired - ((amountADesired * feeBps) / 10000)) - amountA > 0) {
+            IERC20(tokenA).safeTransfer(msg.sender, (amountADesired - ((amountADesired * feeBps) / 10000)) - amountA);
+        }
+        if ((amountBDesired - ((amountBDesired * feeBps) / 10000)) - amountB > 0) {
+            IERC20(tokenB).safeTransfer(msg.sender, (amountBDesired - ((amountBDesired * feeBps) / 10000)) - amountB);
+        }
     }
 
     // Add Liquidity Token/ETH (taking fee on token and ETH)
@@ -127,39 +126,36 @@ contract GMDexLiquidity is Ownable {
         // Pull token from user
         IERC20(token).safeTransferFrom(msg.sender, address(this), amountTokenDesired);
 
-        uint256 amountTokenAfterFee;
-        uint256 amountETHAfterFee;
-        {
-            uint256 feeToken = (amountTokenDesired * feeBps) / 10000;
-            uint256 feeETH = (msg.value * feeBps) / 10000;
-            amountTokenAfterFee = amountTokenDesired - feeToken;
-            amountETHAfterFee = msg.value - feeETH;
-            if (feeToken > 0) IERC20(token).safeTransfer(treasury, feeToken);
-            if (feeETH > 0) {
-                (bool success, ) = payable(treasury).call{value: feeETH}("");
-                require(success, "Treasury fee transfer failed");
-            }
+        // Send fees to treasury (calculating inline)
+        if ((amountTokenDesired * feeBps) / 10000 > 0) {
+            IERC20(token).safeTransfer(treasury, (amountTokenDesired * feeBps) / 10000);
+        }
+        if ((msg.value * feeBps) / 10000 > 0) {
+            (bool success, ) = payable(treasury).call{value: (msg.value * feeBps) / 10000}("");
+            require(success, "Treasury fee transfer failed");
         }
 
-        // Approve Uniswap Router
-        IERC20(token).safeIncreaseAllowance(UNISWAP_V2_ROUTER, amountTokenAfterFee);
+        // Approve Uniswap Router (calculating inline)
+        IERC20(token).safeIncreaseAllowance(UNISWAP_V2_ROUTER, amountTokenDesired - ((amountTokenDesired * feeBps) / 10000));
 
         // Execute Add Liquidity ETH
-        (amountToken, amountETH, liquidity) = IUniswapV2Router02(UNISWAP_V2_ROUTER).addLiquidityETH{value: amountETHAfterFee}(
+        (amountToken, amountETH, liquidity) = IUniswapV2Router02(UNISWAP_V2_ROUTER).addLiquidityETH{
+            value: msg.value - ((msg.value * feeBps) / 10000)
+        }(
             token,
-            amountTokenAfterFee,
+            amountTokenDesired - ((amountTokenDesired * feeBps) / 10000),
             amountTokenMin,
             amountETHMin,
             to,
             deadline
         );
 
-        // Transfer leftover token and ETH back to user
-        uint256 leftoverToken = amountTokenAfterFee - amountToken;
-        uint256 leftoverETH = amountETHAfterFee - amountETH;
-        if (leftoverToken > 0) IERC20(token).safeTransfer(msg.sender, leftoverToken);
-        if (leftoverETH > 0) {
-            (bool success, ) = payable(msg.sender).call{value: leftoverETH}("");
+        // Transfer leftover token and ETH back to user (calculating inline)
+        if ((amountTokenDesired - ((amountTokenDesired * feeBps) / 10000)) - amountToken > 0) {
+            IERC20(token).safeTransfer(msg.sender, (amountTokenDesired - ((amountTokenDesired * feeBps) / 10000)) - amountToken);
+        }
+        if ((msg.value - ((msg.value * feeBps) / 10000)) - amountETH > 0) {
+            (bool success, ) = payable(msg.sender).call{value: (msg.value - ((msg.value * feeBps) / 10000)) - amountETH}("");
             require(success, "Leftover ETH return failed");
         }
     }
