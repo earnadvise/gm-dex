@@ -361,9 +361,10 @@ export default function Home() {
   const [showPoolModal, setShowPoolModal] = useState(false);
 
   // User Balance (Swap)
-  const { data: balanceData } = useBalance({
+  const { data: balanceData, refetch: refetchBalance } = useBalance({
     address: address,
     token: inputToken.address ? (inputToken.address as `0x${string}`) : undefined,
+    query: { refetchInterval: 2000 },
   });
 
   const handleMax = () => {
@@ -378,14 +379,16 @@ export default function Home() {
   };
 
   // User Balances (Pool)
-  const { data: balanceDataA } = useBalance({
+  const { data: balanceDataA, refetch: refetchBalanceA } = useBalance({
     address: address,
     token: poolTokenA.address ? (poolTokenA.address as `0x${string}`) : undefined,
+    query: { refetchInterval: 2000 },
   });
 
-  const { data: balanceDataB } = useBalance({
+  const { data: balanceDataB, refetch: refetchBalanceB } = useBalance({
     address: address,
     token: poolTokenB.address ? (poolTokenB.address as `0x${string}`) : undefined,
+    query: { refetchInterval: 2000 },
   });
 
   const handleMaxPoolA = () => {
@@ -697,28 +700,37 @@ export default function Home() {
     args: [WETH as `0x${string}`, eurcToken.address as `0x${string}`, false],
   });
 
-  const { data: lpBalUsdcEurc } = useReadContract({
+  const { data: lpBalUsdcEurc, refetch: refetchUsdcEurc } = useReadContract({
     address: poolAddrUsdcEurc && poolAddrUsdcEurc !== "0x0000000000000000000000000000000000000000" ? (poolAddrUsdcEurc as `0x${string}`) : undefined,
     abi: ERC20_ABI,
     functionName: "balanceOf",
     args: address ? [address] : undefined,
-    query: { enabled: isConnected && !!address && !!poolAddrUsdcEurc && poolAddrUsdcEurc !== "0x0000000000000000000000000000000000000000" }
+    query: {
+      enabled: isConnected && !!address && !!poolAddrUsdcEurc && poolAddrUsdcEurc !== "0x0000000000000000000000000000000000000000",
+      refetchInterval: 2000,
+    }
   });
 
-  const { data: lpBalEthUsdc } = useReadContract({
+  const { data: lpBalEthUsdc, refetch: refetchEthUsdc } = useReadContract({
     address: poolAddrEthUsdc && poolAddrEthUsdc !== "0x0000000000000000000000000000000000000000" ? (poolAddrEthUsdc as `0x${string}`) : undefined,
     abi: ERC20_ABI,
     functionName: "balanceOf",
     args: address ? [address] : undefined,
-    query: { enabled: isConnected && !!address && !!poolAddrEthUsdc && poolAddrEthUsdc !== "0x0000000000000000000000000000000000000000" }
+    query: {
+      enabled: isConnected && !!address && !!poolAddrEthUsdc && poolAddrEthUsdc !== "0x0000000000000000000000000000000000000000",
+      refetchInterval: 2000,
+    }
   });
 
-  const { data: lpBalEthEurc } = useReadContract({
+  const { data: lpBalEthEurc, refetch: refetchEthEurc } = useReadContract({
     address: poolAddrEthEurc && poolAddrEthEurc !== "0x0000000000000000000000000000000000000000" ? (poolAddrEthEurc as `0x${string}`) : undefined,
     abi: ERC20_ABI,
     functionName: "balanceOf",
     args: address ? [address] : undefined,
-    query: { enabled: isConnected && !!address && !!poolAddrEthEurc && poolAddrEthEurc !== "0x0000000000000000000000000000000000000000" }
+    query: {
+      enabled: isConnected && !!address && !!poolAddrEthEurc && poolAddrEthEurc !== "0x0000000000000000000000000000000000000000",
+      refetchInterval: 2000,
+    }
   });
 
   const lpPositionsCount = [lpBalUsdcEurc, lpBalEthUsdc, lpBalEthEurc].filter(b => b !== undefined && (b as bigint) > 0n).length;
@@ -768,7 +780,10 @@ export default function Home() {
     abi: ERC20_ABI,
     functionName: "balanceOf",
     args: address ? [address] : undefined,
-    query: { enabled: isConnected && !!address && !!poolAddress && poolAddress !== "0x0000000000000000000000000000000000000000" }
+    query: {
+      enabled: isConnected && !!address && !!poolAddress && poolAddress !== "0x0000000000000000000000000000000000000000",
+      refetchInterval: 2000,
+    }
   });
 
   // Query User LP Allowance for Aerodrome Router
@@ -776,8 +791,11 @@ export default function Home() {
     address: poolAddress && poolAddress !== "0x0000000000000000000000000000000000000000" ? (poolAddress as `0x${string}`) : undefined,
     abi: ERC20_ABI,
     functionName: "allowance",
-    args: address ? [address, AERO_ROUTER] : undefined,
-    query: { enabled: isConnected && !!address && !!poolAddress && poolAddress !== "0x0000000000000000000000000000000000000000" }
+    args: address && poolAddress ? [address, AERO_ROUTER as `0x${string}`] : undefined,
+    query: {
+      enabled: isConnected && !!address && !!poolAddress && poolAddress !== "0x0000000000000000000000000000000000000000",
+      refetchInterval: 2000,
+    }
   });
 
   const removeLpWei = parseAmt(removeLpAmount, 18);
@@ -850,10 +868,18 @@ export default function Home() {
 
       setTxHash(tx);
       setRemoveLpAmount("");
-      setTimeout(() => {
+      const fastRefetch = () => {
         refetchLpBalance();
         refetchLpAllowance();
-      }, 4000);
+        refetchBalanceA();
+        refetchBalanceB();
+        refetchUsdcEurc();
+        refetchEthUsdc();
+        refetchEthEurc();
+      };
+      setTimeout(fastRefetch, 1000);
+      setTimeout(fastRefetch, 2500);
+      setTimeout(fastRefetch, 5000);
     } catch (e: any) {
       setError(e?.shortMessage || e?.message || "Remove Liquidity failed.");
     }
@@ -873,7 +899,7 @@ export default function Home() {
         functionName: "approve",
         args: [GM_DEX_LIQUIDITY, poolAmountAWei],
       });
-      setTimeout(() => refetchAllowanceA(), 3000);
+      setTimeout(() => refetchAllowanceA(), 2000);
     } catch (e: any) {
       setError(e?.shortMessage || e?.message || "Token A approval failed.");
     }
@@ -890,7 +916,7 @@ export default function Home() {
         functionName: "approve",
         args: [GM_DEX_LIQUIDITY, poolAmountBWei],
       });
-      setTimeout(() => refetchAllowanceB(), 3000);
+      setTimeout(() => refetchAllowanceB(), 2000);
     } catch (e: any) {
       setError(e?.shortMessage || e?.message || "Token B approval failed.");
     }
@@ -956,6 +982,17 @@ export default function Home() {
       setTxHash(tx);
       setPoolAmountA("");
       setPoolAmountB("");
+      const fastRefetch = () => {
+        refetchLpBalance();
+        refetchBalanceA();
+        refetchBalanceB();
+        refetchUsdcEurc();
+        refetchEthUsdc();
+        refetchEthEurc();
+      };
+      setTimeout(fastRefetch, 1000);
+      setTimeout(fastRefetch, 2500);
+      setTimeout(fastRefetch, 5000);
     } catch (e: any) {
       setError(e?.shortMessage || e?.message || "Add Liquidity failed.");
     }
@@ -1319,7 +1356,6 @@ export default function Home() {
                     <tr className="border-b border-white/5 text-xs text-zinc-400 font-semibold uppercase tracking-wider">
                       <th className="pb-3 px-3">Pool</th>
                       <th className="pb-3 px-3">TVL</th>
-                      <th className="pb-3 px-3">24h Fees (Est.)</th>
                       <th className="pb-3 px-3">Your LP</th>
                       <th className="pb-3 px-3">Your Share</th>
                       <th className="pb-3 px-3 text-right">Actions</th>
@@ -1348,9 +1384,6 @@ export default function Home() {
 
                         {/* TVL */}
                         <td className="py-4 px-3 font-bold text-white">{pool.tvl}</td>
-
-                        {/* 24h Fees */}
-                        <td className="py-4 px-3 font-semibold text-[#01C38E]">{pool.fees24h}</td>
 
                         {/* Your LP */}
                         <td className="py-4 px-3 font-bold text-white">
