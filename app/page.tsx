@@ -1255,48 +1255,6 @@ export default function Home() {
                 </button>
               </div>
             </div>
-
-            {/* Smart Contract Transparency Box */}
-            <div className="bg-[#0f172a]/90 border border-white/[0.08] rounded-3xl p-6 backdrop-blur-xl">
-              <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-4">
-                <span className="text-white font-extrabold text-base flex items-center gap-2">
-                  <ShieldCheck className="h-5 w-5 text-[#01C38E]" /> Verified Base Smart Contracts
-                </span>
-                <span className="text-xs font-semibold text-zinc-400">Chain ID: 8453</span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="p-4 rounded-2xl bg-black/30 border border-white/5 flex flex-col justify-between">
-                  <div>
-                    <span className="text-xs font-semibold text-zinc-400">Swap Fee Router Contract</span>
-                    <div className="text-sm font-bold text-white font-mono mt-1">0x9dc3...0B70</div>
-                  </div>
-                  <a
-                    href="https://basescan.org/address/0x9dc3BBdB8817309ba42b79cc357EC6Be47030B70"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-[11px] text-[#01C38E] hover:underline font-bold mt-2 inline-flex items-center gap-1"
-                  >
-                    View on Basescan <ExternalLink className="h-3 w-3" />
-                  </a>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-black/30 border border-white/5 flex flex-col justify-between">
-                  <div>
-                    <span className="text-xs font-semibold text-zinc-400">Liquidity Fee Deposit Contract</span>
-                    <div className="text-sm font-bold text-white font-mono mt-1">0x379b...4572</div>
-                  </div>
-                  <a
-                    href="https://basescan.org/address/0x379bB6CBd151c8A9C3da6e534E46356e17b14572"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-[11px] text-[#01C38E] hover:underline font-bold mt-2 inline-flex items-center gap-1"
-                  >
-                    View on Basescan <ExternalLink className="h-3 w-3" />
-                  </a>
-                </div>
-              </div>
-            </div>
           </div>
         ) : activeTab === "swap" ? (
           /* Swap Landing View */
