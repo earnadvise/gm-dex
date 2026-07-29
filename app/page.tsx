@@ -1089,182 +1089,267 @@ export default function Home() {
       {/* Main Content */}
       <main className="flex-1 flex items-center justify-center px-4 py-10">
         {activeTab === "swap" ? (
-          /* Swap View */
-          <div className="w-full max-w-[440px] flex flex-col gap-5">
-            <div className="bg-[#0f172a]/80 border border-white/[0.06] rounded-3xl p-5 backdrop-blur-xl shadow-2xl">
-              <div className="flex border-b border-white/5 mb-5 pb-3">
-                <span className="text-white font-bold text-base">Swap Tokens</span>
+          /* Swap Landing View */
+          <div className="w-full max-w-5xl flex flex-col gap-10 py-2">
+            {/* Hero Section */}
+            <div className="text-center flex flex-col items-center gap-3 max-w-2xl mx-auto">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#01C38E]/10 border border-[#01C38E]/20 text-[#01C38E] text-xs font-semibold">
+                <Zap className="h-3.5 w-3.5" /> Instant Token Swaps on Base
+              </div>
+              <h1 className="text-4xl sm:text-5xl font-black text-white tracking-tight">
+                Swap Any Token
+              </h1>
+              <h2 className="text-3xl sm:text-4xl font-extrabold bg-gradient-to-r from-[#01C38E] via-[#0A786A] to-[#01C38E] bg-clip-text text-transparent">
+                Best Execution & Deep Liquidity
+              </h2>
+              <p className="text-zinc-400 text-sm sm:text-base mt-1">
+                Direct Aerodrome V2 routing with minimal slippage and automated fee collection. Swap ETH, USDC, EURC & more instantly.
+              </p>
+            </div>
+
+            {/* Main Swap Grid: Highlights Left + Swap Box Right */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+              {/* Left Column: Feature Highlights & Stats (5 cols) */}
+              <div className="lg:col-span-5 flex flex-col gap-4 order-2 lg:order-1">
+                {/* Feature 1 */}
+                <div className="bg-[#0f172a]/80 border border-white/[0.08] rounded-2xl p-5 backdrop-blur-xl hover:border-[#01C38E]/30 transition-all flex items-start gap-4">
+                  <div className="p-3 rounded-xl bg-[#01C38E]/10 text-[#01C38E] shrink-0">
+                    <Zap className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-white text-base">Sub-Second Speed</h3>
+                    <p className="text-zinc-400 text-xs mt-1 leading-relaxed">
+                      Powered by Base Layer 2 for ultra-fast confirmation times and minimal gas fees.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Feature 2 */}
+                <div className="bg-[#0f172a]/80 border border-white/[0.08] rounded-2xl p-5 backdrop-blur-xl hover:border-[#01C38E]/30 transition-all flex items-start gap-4">
+                  <div className="p-3 rounded-xl bg-[#01C38E]/10 text-[#01C38E] shrink-0">
+                    <TrendingUp className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-white text-base">Low Slippage Curve</h3>
+                    <p className="text-zinc-400 text-xs mt-1 leading-relaxed">
+                      Automatically queries Aerodrome Router for optimum swap path across volatile and stable pools.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Feature 3 */}
+                <div className="bg-[#0f172a]/80 border border-white/[0.08] rounded-2xl p-5 backdrop-blur-xl hover:border-[#01C38E]/30 transition-all flex items-start gap-4">
+                  <div className="p-3 rounded-xl bg-[#01C38E]/10 text-[#01C38E] shrink-0">
+                    <Sparkles className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-white text-base">Builder Code Enabled</h3>
+                    <p className="text-zinc-400 text-xs mt-1 leading-relaxed">
+                      Every swap appends standard Base Builder attribution for ecosystem fee distribution.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Live Protocol Stats Box */}
+                <div className="bg-gradient-to-br from-[#01C38E]/10 to-[#0A786A]/10 border border-[#01C38E]/20 rounded-2xl p-5 backdrop-blur-xl mt-1">
+                  <div className="flex justify-between items-center text-xs font-semibold text-zinc-300 mb-2.5">
+                    <span>Protocol Fee</span>
+                    <span className="text-[#01C38E] font-bold">0.1%</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs font-semibold text-zinc-300 mb-2.5">
+                    <span>Gas Network</span>
+                    <span className="text-white font-bold">Base Mainnet</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs font-semibold text-zinc-300">
+                    <span>Routing Engine</span>
+                    <span className="text-white font-bold">Aerodrome V2</span>
+                  </div>
+                </div>
               </div>
 
-              {/* Input */}
-              <div className="bg-black/30 border border-white/[0.04] rounded-2xl p-4">
-                <div className="flex justify-between items-center mb-2">
-                  <label className="text-xs text-zinc-500 font-medium">You sell</label>
-                  {isConnected && balanceData && (
-                    <div className="flex items-center gap-1.5 text-[11px] text-zinc-500">
-                      <span>
-                        Balance: {parseFloat(balanceData.formatted || "0").toLocaleString(undefined, {
-                          maximumFractionDigits: 6,
-                        })}
-                      </span>
-                      <button
-                        onClick={handleMax}
-                        className="text-[#01C38E] hover:text-[#00ab7c] font-black uppercase text-[10px] bg-[#01C38E]/10 hover:bg-[#01C38E]/20 px-1.5 py-0.5 rounded transition-all"
-                      >
-                        Max
-                      </button>
+              {/* Right Column: Swap Widget Box (7 cols) */}
+              <div className="lg:col-span-7 flex justify-center order-1 lg:order-2">
+                <div className="w-full max-w-[460px] bg-[#0f172a]/90 border border-white/[0.08] rounded-3xl p-6 backdrop-blur-xl shadow-2xl shadow-[#01C38E]/5">
+                  <div className="flex items-center justify-between border-b border-white/5 mb-5 pb-4">
+                    <span className="text-white font-extrabold text-lg flex items-center gap-2">
+                      <ArrowRightLeft className="h-5 w-5 text-[#01C38E]" /> Swap Tokens
+                    </span>
+                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[#01C38E]/10 border border-[#01C38E]/20 text-[#01C38E]">
+                      Auto-Router
+                    </span>
+                  </div>
+
+                  {/* Input */}
+                  <div className="bg-black/30 border border-white/[0.04] rounded-2xl p-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <label className="text-xs text-zinc-500 font-medium">You sell</label>
+                      {isConnected && balanceData && (
+                        <div className="flex items-center gap-1.5 text-[11px] text-zinc-500">
+                          <span>
+                            Balance: {parseFloat(balanceData.formatted || "0").toLocaleString(undefined, {
+                              maximumFractionDigits: 6,
+                            })}
+                          </span>
+                          <button
+                            onClick={handleMax}
+                            className="text-[#01C38E] hover:text-[#00ab7c] font-black uppercase text-[10px] bg-[#01C38E]/10 hover:bg-[#01C38E]/20 px-1.5 py-0.5 rounded transition-all"
+                          >
+                            Max
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        placeholder="0"
+                        value={amount}
+                        onChange={(e) => { setAmount(e.target.value); setError(""); setTxHash(""); }}
+                        className="bg-transparent text-[28px] font-bold text-white outline-none w-full placeholder-zinc-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+                      <div className="relative" ref={inputDDRef}>
+                        <button
+                          onClick={() => { setShowInputDD(!showInputDD); setShowOutputDD(false); }}
+                          className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 pl-2 pr-2.5 py-1.5 rounded-full transition-colors shrink-0"
+                        >
+                          {inputToken.image && <img src={inputToken.image} alt="" className="w-5 h-5 rounded-full" />}
+                          <span className="font-bold text-sm">{inputToken.symbol}</span>
+                          <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />
+                        </button>
+                        {showInputDD && (
+                          <div className="absolute right-0 mt-2 w-44 bg-[#0c1222] border border-white/10 rounded-2xl shadow-xl z-50 overflow-hidden py-1">
+                            {SUPPORTED_TOKENS.map((t) => (
+                              <button key={`i-${t.symbol}`} onClick={() => selectInput(t)}
+                                className="flex items-center gap-2.5 w-full px-3 py-2.5 hover:bg-white/5 text-left text-sm">
+                                {t.image && <img src={t.image} alt="" className="w-5 h-5 rounded-full" />}
+                                <span className="font-semibold">{t.symbol}</span>
+                                {t.symbol === inputToken.symbol && <Check className="h-3.5 w-3.5 text-[#01C38E] ml-auto" />}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Flip */}
+                  <div className="flex justify-center -my-3 relative z-10">
+                    <button
+                      onClick={flipTokens}
+                      className="w-9 h-9 rounded-full bg-[#13141c] border-[3px] border-[#0f172a] hover:bg-[#1a1b25] flex items-center justify-center transition-all active:scale-90"
+                    >
+                      <ArrowRightLeft className="h-3.5 w-3.5 text-zinc-400 rotate-90" />
+                    </button>
+                  </div>
+
+                  {/* Output */}
+                  <div className="bg-black/30 border border-white/[0.04] rounded-2xl p-4 mt-1">
+                    <label className="text-xs text-zinc-500 font-medium mb-2 block">You buy</label>
+                    <div className="flex items-center gap-3">
+                      <div className="text-[28px] font-bold text-white flex-1 min-h-[42px] flex items-center">
+                        {displayOut || <span className="text-zinc-700">0</span>}
+                      </div>
+                      <div className="relative" ref={outputDDRef}>
+                        <button
+                          onClick={() => { setShowOutputDD(!showOutputDD); setShowInputDD(false); }}
+                          className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 pl-2 pr-2.5 py-1.5 rounded-full transition-colors shrink-0"
+                        >
+                          {outputToken.image && <img src={outputToken.image} alt="" className="w-5 h-5 rounded-full" />}
+                          <span className="font-bold text-sm">{outputToken.symbol}</span>
+                          <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />
+                        </button>
+                        {showOutputDD && (
+                          <div className="absolute right-0 mt-2 w-44 bg-[#0c1222] border border-white/10 rounded-2xl shadow-xl z-50 overflow-hidden py-1">
+                            {SUPPORTED_TOKENS.map((t) => (
+                              <button key={`o-${t.symbol}`} onClick={() => selectOutput(t)}
+                                className="flex items-center gap-2.5 w-full px-3 py-2.5 hover:bg-white/5 text-left text-sm">
+                                {t.image && <img src={t.image} alt="" className="w-5 h-5 rounded-full" />}
+                                <span className="font-semibold">{t.symbol}</span>
+                                {t.symbol === outputToken.symbol && <Check className="h-3.5 w-3.5 text-[#01C38E] ml-auto" />}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Error */}
+                  {error && (
+                    <div className="mt-3 flex items-start gap-2 text-xs text-red-400 bg-red-500/10 border border-red-500/15 p-3 rounded-xl">
+                      <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                      <span className="break-words">{error.length > 200 ? error.slice(0, 200) + "..." : error}</span>
                     </div>
                   )}
-                </div>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    placeholder="0"
-                    value={amount}
-                    onChange={(e) => { setAmount(e.target.value); setError(""); setTxHash(""); }}
-                    className="bg-transparent text-[28px] font-bold text-white outline-none w-full placeholder-zinc-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  />
-                  <div className="relative" ref={inputDDRef}>
-                    <button
-                      onClick={() => { setShowInputDD(!showInputDD); setShowOutputDD(false); }}
-                      className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 pl-2 pr-2.5 py-1.5 rounded-full transition-colors shrink-0"
-                    >
-                      {inputToken.image && <img src={inputToken.image} alt="" className="w-5 h-5 rounded-full" />}
-                      <span className="font-bold text-sm">{inputToken.symbol}</span>
-                      <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />
-                    </button>
-                    {showInputDD && (
-                      <div className="absolute right-0 mt-2 w-44 bg-[#0c1222] border border-white/10 rounded-2xl shadow-xl z-50 overflow-hidden py-1">
-                        {SUPPORTED_TOKENS.map((t) => (
-                          <button key={`i-${t.symbol}`} onClick={() => selectInput(t)}
-                            className="flex items-center gap-2.5 w-full px-3 py-2.5 hover:bg-white/5 text-left text-sm">
-                            {t.image && <img src={t.image} alt="" className="w-5 h-5 rounded-full" />}
-                            <span className="font-semibold">{t.symbol}</span>
-                            {t.symbol === inputToken.symbol && <Check className="h-3.5 w-3.5 text-[#01C38E] ml-auto" />}
-                          </button>
-                        ))}
+
+                  {/* Success */}
+                  {txHash && (
+                    <div className="mt-3 flex items-start gap-2 text-xs text-green-400 bg-green-500/10 border border-green-500/15 p-3 rounded-xl">
+                      <Check className="h-4 w-4 shrink-0 mt-0.5" />
+                      <div className="flex flex-col gap-1">
+                        <span className="font-bold">Swap Submitted!</span>
+                        <a
+                          href={`https://basescan.org/tx/${txHash}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 underline hover:text-green-300"
+                        >
+                          View on Basescan <ExternalLink className="h-3 w-3" />
+                        </a>
                       </div>
+                    </div>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="mt-4">
+                    {!isConnected ? (
+                      <button
+                        onClick={() => setShowConnectModal(true)}
+                        className="w-full bg-[#01C38E] hover:bg-[#00ab7c] text-white font-bold py-4 rounded-2xl transition-all text-sm flex items-center justify-center gap-2 shadow-lg shadow-[#01C38E]/30 active:scale-[0.98]"
+                      >
+                        <Wallet className="h-4 w-4" />
+                        Connect Wallet
+                      </button>
+                    ) : chain?.id !== 8453 ? (
+                      <button
+                        onClick={() => switchChain({ chainId: 8453 })}
+                        className="w-full bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-4 rounded-2xl transition-all text-sm shadow-lg shadow-yellow-600/30 active:scale-[0.98]"
+                      >
+                        Switch Network to Base
+                      </button>
+                    ) : !amount || Number(amount) <= 0 ? (
+                      <button disabled className="w-full bg-white/5 border border-white/10 text-zinc-500 font-bold py-4 rounded-2xl cursor-not-allowed text-sm">
+                        Enter an amount
+                      </button>
+                    ) : isQuoteLoading ? (
+                      <button disabled className="w-full bg-white/5 border border-white/10 text-zinc-400 font-bold py-4 rounded-2xl cursor-not-allowed text-sm flex items-center justify-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />
+                        Fetching best price...
+                      </button>
+                    ) : outWei === 0n ? (
+                      <button disabled className="w-full bg-white/5 border border-white/10 text-red-400 font-bold py-4 rounded-2xl cursor-not-allowed text-sm">
+                        Insufficient liquidity
+                      </button>
+                    ) : !isApproved ? (
+                      <button
+                        onClick={handleApprove}
+                        disabled={isApproving}
+                        className="w-full bg-[#01C38E] hover:bg-[#00ab7c] text-white font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-2 text-sm shadow-lg shadow-[#01C38E]/30 active:scale-[0.98] disabled:opacity-60"
+                      >
+                        {isApproving ? <><Loader2 className="h-4 w-4 animate-spin" /> Approving...</> : `Approve ${inputToken.symbol}`}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleSwap}
+                        disabled={isSwapping}
+                        className="w-full bg-[#01C38E] hover:bg-[#00ab7c] text-white font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-2 text-sm shadow-lg shadow-[#01C38E]/30 active:scale-[0.98] disabled:opacity-60"
+                      >
+                        {isSwapping ? <><Loader2 className="h-4 w-4 animate-spin" /> Swapping...</> : "Swap"}
+                      </button>
                     )}
                   </div>
                 </div>
-              </div>
-
-              {/* Flip */}
-              <div className="flex justify-center -my-3 relative z-10">
-                <button
-                  onClick={flipTokens}
-                  className="w-9 h-9 rounded-full bg-[#13141c] border-[3px] border-[#0f172a] hover:bg-[#1a1b25] flex items-center justify-center transition-all active:scale-90"
-                >
-                  <ArrowRightLeft className="h-3.5 w-3.5 text-zinc-400 rotate-90" />
-                </button>
-              </div>
-
-              {/* Output */}
-              <div className="bg-black/30 border border-white/[0.04] rounded-2xl p-4 mt-1">
-                <label className="text-xs text-zinc-500 font-medium mb-2 block">You buy</label>
-                <div className="flex items-center gap-3">
-                  <div className="text-[28px] font-bold text-white flex-1 min-h-[42px] flex items-center">
-                    {displayOut || <span className="text-zinc-700">0</span>}
-                  </div>
-                  <div className="relative" ref={outputDDRef}>
-                    <button
-                      onClick={() => { setShowOutputDD(!showOutputDD); setShowInputDD(false); }}
-                      className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 pl-2 pr-2.5 py-1.5 rounded-full transition-colors shrink-0"
-                    >
-                      {outputToken.image && <img src={outputToken.image} alt="" className="w-5 h-5 rounded-full" />}
-                      <span className="font-bold text-sm">{outputToken.symbol}</span>
-                      <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />
-                    </button>
-                    {showOutputDD && (
-                      <div className="absolute right-0 mt-2 w-44 bg-[#0c1222] border border-white/10 rounded-2xl shadow-xl z-50 overflow-hidden py-1">
-                        {SUPPORTED_TOKENS.map((t) => (
-                          <button key={`o-${t.symbol}`} onClick={() => selectOutput(t)}
-                            className="flex items-center gap-2.5 w-full px-3 py-2.5 hover:bg-white/5 text-left text-sm">
-                            {t.image && <img src={t.image} alt="" className="w-5 h-5 rounded-full" />}
-                            <span className="font-semibold">{t.symbol}</span>
-                            {t.symbol === outputToken.symbol && <Check className="h-3.5 w-3.5 text-[#01C38E] ml-auto" />}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Error */}
-              {error && (
-                <div className="mt-3 flex items-start gap-2 text-xs text-red-400 bg-red-500/10 border border-red-500/15 p-3 rounded-xl">
-                  <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                  <span className="break-words">{error.length > 200 ? error.slice(0, 200) + "..." : error}</span>
-                </div>
-              )}
-
-              {/* Success */}
-              {txHash && (
-                <div className="mt-3 flex items-start gap-2 text-xs text-green-400 bg-green-500/10 border border-green-500/15 p-3 rounded-xl">
-                  <Check className="h-4 w-4 shrink-0 mt-0.5" />
-                  <div className="flex flex-col gap-1">
-                    <span className="font-bold">Swap Submitted!</span>
-                    <a
-                      href={`https://basescan.org/tx/${txHash}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1 underline hover:text-green-300"
-                    >
-                      View on Basescan <ExternalLink className="h-3 w-3" />
-                    </a>
-                  </div>
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              <div className="mt-4">
-                {!isConnected ? (
-                  <button
-                    onClick={() => setShowConnectModal(true)}
-                    className="w-full bg-[#01C38E] hover:bg-[#00ab7c] text-white font-bold py-4 rounded-2xl transition-all text-sm flex items-center justify-center gap-2 shadow-lg shadow-[#01C38E]/30 active:scale-[0.98]"
-                  >
-                    <Wallet className="h-4 w-4" />
-                    Connect Wallet
-                  </button>
-                ) : chain?.id !== 8453 ? (
-                  <button
-                    onClick={() => switchChain({ chainId: 8453 })}
-                    className="w-full bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-4 rounded-2xl transition-all text-sm shadow-lg shadow-yellow-600/30 active:scale-[0.98]"
-                  >
-                    Switch Network to Base
-                  </button>
-                ) : !amount || Number(amount) <= 0 ? (
-                  <button disabled className="w-full bg-white/5 border border-white/10 text-zinc-500 font-bold py-4 rounded-2xl cursor-not-allowed text-sm">
-                    Enter an amount
-                  </button>
-                ) : isQuoteLoading ? (
-                  <button disabled className="w-full bg-white/5 border border-white/10 text-zinc-400 font-bold py-4 rounded-2xl cursor-not-allowed text-sm flex items-center justify-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />
-                    Fetching best price...
-                  </button>
-                ) : outWei === 0n ? (
-                  <button disabled className="w-full bg-white/5 border border-white/10 text-red-400 font-bold py-4 rounded-2xl cursor-not-allowed text-sm">
-                    Insufficient liquidity
-                  </button>
-                ) : !isApproved ? (
-                  <button
-                    onClick={handleApprove}
-                    disabled={isApproving}
-                    className="w-full bg-[#01C38E] hover:bg-[#00ab7c] text-white font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-2 text-sm shadow-lg shadow-[#01C38E]/30 active:scale-[0.98] disabled:opacity-60"
-                  >
-                    {isApproving ? <><Loader2 className="h-4 w-4 animate-spin" /> Approving...</> : `Approve ${inputToken.symbol}`}
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleSwap}
-                    disabled={isSwapping}
-                    className="w-full bg-[#01C38E] hover:bg-[#00ab7c] text-white font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-2 text-sm shadow-lg shadow-[#01C38E]/30 active:scale-[0.98] disabled:opacity-60"
-                  >
-                    {isSwapping ? <><Loader2 className="h-4 w-4 animate-spin" /> Swapping...</> : "Swap"}
-                  </button>
-                )}
               </div>
             </div>
           </div>
