@@ -46,13 +46,13 @@ function WalletButton({ onConnectClick }: { onConnectClick: () => void }) {
           onClick={() => setShowDropdown((v) => !v)}
           className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-semibold rounded-full px-4 py-2 transition-all duration-200"
         >
-          <div className="h-6 w-6 rounded-full bg-gradient-to-tr from-[#0052ff] to-[#ffd700] flex items-center justify-center">
+          <div className="h-6 w-6 rounded-full bg-gradient-to-tr from-[#01C38E] to-[#01C38E] flex items-center justify-center">
             <User className="h-3 w-3 text-white" />
           </div>
           <span className="text-sm">{short}</span>
         </button>
         {showDropdown && (
-          <div className="absolute right-0 mt-2 w-48 bg-[#0c0d12] border border-white/10 rounded-2xl shadow-xl z-50 overflow-hidden">
+          <div className="absolute right-0 mt-2 w-48 bg-[#0c1222] border border-white/10 rounded-2xl shadow-xl z-50 overflow-hidden">
             <div className="px-4 py-3 border-b border-white/10">
               <p className="text-xs text-zinc-500">Connected</p>
               <p className="text-sm text-white font-mono mt-0.5">{short}</p>
@@ -72,7 +72,7 @@ function WalletButton({ onConnectClick }: { onConnectClick: () => void }) {
   return (
     <button
       onClick={onConnectClick}
-      className="flex items-center gap-2 bg-[#0052ff] hover:bg-[#0045d8] text-white font-semibold rounded-full px-5 py-2.5 transition-all duration-200 shadow-lg shadow-[#0052ff]/30"
+      className="flex items-center gap-2 bg-[#01C38E] hover:bg-[#00ab7c] text-white font-semibold rounded-full px-5 py-2.5 transition-all duration-200 shadow-lg shadow-[#01C38E]/30"
     >
       <Wallet className="h-4 w-4" />
       Connect Wallet
@@ -600,23 +600,23 @@ export default function Home() {
   const isBusy = isApproving || isSwapping;
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#06070a] text-[#f4f6fa] relative overflow-hidden font-sans">
+    <div className="flex flex-col min-h-screen bg-[#0f172a] text-[#f4f6fa] relative overflow-hidden font-sans">
       {/* Background Glow */}
-      <div className="absolute top-[-20%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-[#0052ff]/8 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[45vw] h-[45vw] rounded-full bg-[#ffd700]/5 blur-[120px] pointer-events-none" />
+      <div className="absolute top-[-20%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-[#01C38E]/8 blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[45vw] h-[45vw] rounded-full bg-[#01C38E]/5 blur-[120px] pointer-events-none" />
 
       {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b border-white/5 bg-[#06070a]/60 backdrop-blur-md">
+      <header className="sticky top-0 z-50 w-full border-b border-white/5 bg-[#0f172a]/60 backdrop-blur-md">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-[#0052ff] to-[#ffd700] p-[2px] shadow-lg shadow-[#0052ff]/20">
-              <div className="h-full w-full rounded-[10px] bg-[#06070a] flex items-center justify-center">
-                <Sun className="h-5 w-5 text-[#ffd700]" />
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-[#01C38E] to-[#01C38E] p-[2px] shadow-lg shadow-[#01C38E]/20">
+              <div className="h-full w-full rounded-[10px] bg-[#0f172a] flex items-center justify-center">
+                <Sun className="h-5 w-5 text-[#01C38E]" />
               </div>
             </div>
             <div>
-              <span className="font-extrabold text-xl tracking-tight bg-gradient-to-r from-white via-[#f4f6fa] to-zinc-400 bg-clip-text text-transparent">
-                GM <span className="text-[#0052ff]">DEX</span>
+              <span className="font-extrabold text-xl tracking-tight bg-gradient-to-r from-white via-[#0a786a] to-[#01c38e] bg-clip-text text-transparent">
+                GM <span className="text-[#01C38E]">DEX</span>
               </span>
               <span className="hidden sm:inline-block ml-2 px-2 py-0.5 text-[10px] font-medium bg-white/5 border border-white/10 rounded-full text-zinc-400">
                 Base
@@ -632,13 +632,13 @@ export default function Home() {
         <div className="w-full max-w-[440px] flex flex-col gap-5">
 
           {/* Swap / Liquidity Card */}
-          <div className="bg-[#0c0d14]/80 border border-white/[0.06] rounded-3xl p-5 backdrop-blur-xl shadow-2xl">
+          <div className="bg-[#0f172a]/80 border border-white/[0.06] rounded-3xl p-5 backdrop-blur-xl shadow-2xl">
             {/* Tabs */}
             <div className="flex border-b border-white/5 mb-5">
               <button
                 onClick={() => { setActiveTab("swap"); setError(""); setTxHash(""); }}
                 className={`flex-1 pb-3 text-sm font-bold border-b-2 transition-all ${
-                  activeTab === "swap" ? "text-white border-[#0052ff]" : "text-zinc-500 border-transparent hover:text-zinc-300"
+                  activeTab === "swap" ? "text-white border-[#01C38E]" : "text-zinc-500 border-transparent hover:text-zinc-300"
                 }`}
               >
                 Swap
@@ -646,7 +646,7 @@ export default function Home() {
               <button
                 onClick={() => { setActiveTab("liquidity"); setError(""); setTxHash(""); }}
                 className={`flex-1 pb-3 text-sm font-bold border-b-2 transition-all ${
-                  activeTab === "liquidity" ? "text-white border-[#0052ff]" : "text-zinc-500 border-transparent hover:text-zinc-300"
+                  activeTab === "liquidity" ? "text-white border-[#01C38E]" : "text-zinc-500 border-transparent hover:text-zinc-300"
                 }`}
               >
                 Liquidity
@@ -668,7 +668,7 @@ export default function Home() {
                         </span>
                         <button
                           onClick={handleMax}
-                          className="text-[#0052ff] hover:text-[#0045d8] font-black uppercase text-[10px] bg-[#0052ff]/10 hover:bg-[#0052ff]/20 px-1.5 py-0.5 rounded transition-all"
+                          className="text-[#01C38E] hover:text-[#00ab7c] font-black uppercase text-[10px] bg-[#01C38E]/10 hover:bg-[#01C38E]/20 px-1.5 py-0.5 rounded transition-all"
                         >
                           Max
                         </button>
@@ -694,13 +694,13 @@ export default function Home() {
                         <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />
                       </button>
                       {showInputDD && (
-                        <div className="absolute right-0 mt-2 w-44 bg-[#0c0d12] border border-white/10 rounded-2xl shadow-xl z-50 overflow-hidden py-1">
+                        <div className="absolute right-0 mt-2 w-44 bg-[#0c1222] border border-white/10 rounded-2xl shadow-xl z-50 overflow-hidden py-1">
                           {SUPPORTED_TOKENS.map((t) => (
                             <button key={`i-${t.symbol}`} onClick={() => selectInput(t)}
                               className="flex items-center gap-2.5 w-full px-3 py-2.5 hover:bg-white/5 text-left text-sm">
                               {t.image && <img src={t.image} alt="" className="w-5 h-5 rounded-full" />}
                               <span className="font-semibold">{t.symbol}</span>
-                              {t.symbol === inputToken.symbol && <Check className="h-3.5 w-3.5 text-[#0052ff] ml-auto" />}
+                              {t.symbol === inputToken.symbol && <Check className="h-3.5 w-3.5 text-[#01C38E] ml-auto" />}
                             </button>
                           ))}
                         </div>
@@ -713,7 +713,7 @@ export default function Home() {
                 <div className="flex justify-center -my-3 relative z-10">
                   <button
                     onClick={flipTokens}
-                    className="w-9 h-9 rounded-full bg-[#13141c] border-[3px] border-[#06070a] hover:bg-[#1a1b25] flex items-center justify-center transition-all active:scale-90"
+                    className="w-9 h-9 rounded-full bg-[#13141c] border-[3px] border-[#0f172a] hover:bg-[#1a1b25] flex items-center justify-center transition-all active:scale-90"
                   >
                     <ArrowRightLeft className="h-3.5 w-3.5 text-zinc-400 rotate-90" />
                   </button>
@@ -736,13 +736,13 @@ export default function Home() {
                         <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />
                       </button>
                       {showOutputDD && (
-                        <div className="absolute right-0 mt-2 w-44 bg-[#0c0d12] border border-white/10 rounded-2xl shadow-xl z-50 overflow-hidden py-1">
+                        <div className="absolute right-0 mt-2 w-44 bg-[#0c1222] border border-white/10 rounded-2xl shadow-xl z-50 overflow-hidden py-1">
                           {SUPPORTED_TOKENS.map((t) => (
                             <button key={`o-${t.symbol}`} onClick={() => selectOutput(t)}
                               className="flex items-center gap-2.5 w-full px-3 py-2.5 hover:bg-white/5 text-left text-sm">
                               {t.image && <img src={t.image} alt="" className="w-5 h-5 rounded-full" />}
                               <span className="font-semibold">{t.symbol}</span>
-                              {t.symbol === outputToken.symbol && <Check className="h-3.5 w-3.5 text-[#0052ff] ml-auto" />}
+                              {t.symbol === outputToken.symbol && <Check className="h-3.5 w-3.5 text-[#01C38E] ml-auto" />}
                             </button>
                           ))}
                         </div>
@@ -766,7 +766,7 @@ export default function Home() {
                         </span>
                         <button
                           onClick={handleMaxPoolA}
-                          className="text-[#0052ff] hover:text-[#0045d8] font-black uppercase text-[10px] bg-[#0052ff]/10 hover:bg-[#0052ff]/20 px-1.5 py-0.5 rounded transition-all"
+                          className="text-[#01C38E] hover:text-[#00ab7c] font-black uppercase text-[10px] bg-[#01C38E]/10 hover:bg-[#01C38E]/20 px-1.5 py-0.5 rounded transition-all"
                         >
                           Max
                         </button>
@@ -792,13 +792,13 @@ export default function Home() {
                         <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />
                       </button>
                       {showPoolADD && (
-                        <div className="absolute right-0 mt-2 w-44 bg-[#0c0d12] border border-white/10 rounded-2xl shadow-xl z-50 overflow-hidden py-1">
+                        <div className="absolute right-0 mt-2 w-44 bg-[#0c1222] border border-white/10 rounded-2xl shadow-xl z-50 overflow-hidden py-1">
                           {SUPPORTED_TOKENS.map((t) => (
                             <button key={`pa-${t.symbol}`} onClick={() => selectPoolA(t)}
                               className="flex items-center gap-2.5 w-full px-3 py-2.5 hover:bg-white/5 text-left text-sm">
                               {t.image && <img src={t.image} alt="" className="w-5 h-5 rounded-full" />}
                               <span className="font-semibold">{t.symbol}</span>
-                              {t.symbol === poolTokenA.symbol && <Check className="h-3.5 w-3.5 text-[#0052ff] ml-auto" />}
+                              {t.symbol === poolTokenA.symbol && <Check className="h-3.5 w-3.5 text-[#01C38E] ml-auto" />}
                             </button>
                           ))}
                         </div>
@@ -809,7 +809,7 @@ export default function Home() {
 
                 {/* Plus Icon */}
                 <div className="flex justify-center -my-3 relative z-10">
-                  <div className="w-9 h-9 rounded-full bg-[#13141c] border-[3px] border-[#06070a] flex items-center justify-center">
+                  <div className="w-9 h-9 rounded-full bg-[#13141c] border-[3px] border-[#0f172a] flex items-center justify-center">
                     <span className="text-zinc-400 font-extrabold text-sm">+</span>
                   </div>
                 </div>
@@ -827,7 +827,7 @@ export default function Home() {
                         </span>
                         <button
                           onClick={handleMaxPoolB}
-                          className="text-[#0052ff] hover:text-[#0045d8] font-black uppercase text-[10px] bg-[#0052ff]/10 hover:bg-[#0052ff]/20 px-1.5 py-0.5 rounded transition-all"
+                          className="text-[#01C38E] hover:text-[#00ab7c] font-black uppercase text-[10px] bg-[#01C38E]/10 hover:bg-[#01C38E]/20 px-1.5 py-0.5 rounded transition-all"
                         >
                           Max
                         </button>
@@ -853,13 +853,13 @@ export default function Home() {
                         <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />
                       </button>
                       {showPoolBDD && (
-                        <div className="absolute right-0 mt-2 w-44 bg-[#0c0d12] border border-white/10 rounded-2xl shadow-xl z-50 overflow-hidden py-1">
+                        <div className="absolute right-0 mt-2 w-44 bg-[#0c1222] border border-white/10 rounded-2xl shadow-xl z-50 overflow-hidden py-1">
                           {SUPPORTED_TOKENS.map((t) => (
                             <button key={`pb-${t.symbol}`} onClick={() => selectPoolB(t)}
                               className="flex items-center gap-2.5 w-full px-3 py-2.5 hover:bg-white/5 text-left text-sm">
                               {t.image && <img src={t.image} alt="" className="w-5 h-5 rounded-full" />}
                               <span className="font-semibold">{t.symbol}</span>
-                              {t.symbol === poolTokenB.symbol && <Check className="h-3.5 w-3.5 text-[#0052ff] ml-auto" />}
+                              {t.symbol === poolTokenB.symbol && <Check className="h-3.5 w-3.5 text-[#01C38E] ml-auto" />}
                             </button>
                           ))}
                         </div>
@@ -932,7 +932,7 @@ export default function Home() {
                   <button
                     onClick={handleApprove}
                     disabled={isApproving}
-                    className="w-full bg-[#0052ff] hover:bg-[#0045d8] text-white font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-2 text-sm shadow-lg shadow-[#0052ff]/30 active:scale-[0.98] disabled:opacity-60"
+                    className="w-full bg-[#01C38E] hover:bg-[#00ab7c] text-white font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-2 text-sm shadow-lg shadow-[#01C38E]/30 active:scale-[0.98] disabled:opacity-60"
                   >
                     {isApproving ? <><Loader2 className="h-4 w-4 animate-spin" /> Approving...</> : `Approve ${inputToken.symbol}`}
                   </button>
@@ -940,7 +940,7 @@ export default function Home() {
                   <button
                     onClick={handleSwap}
                     disabled={isSwapping}
-                    className="w-full bg-[#0052ff] hover:bg-[#0045d8] text-white font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-2 text-sm shadow-lg shadow-[#0052ff]/30 active:scale-[0.98] disabled:opacity-60"
+                    className="w-full bg-[#01C38E] hover:bg-[#00ab7c] text-white font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-2 text-sm shadow-lg shadow-[#01C38E]/30 active:scale-[0.98] disabled:opacity-60"
                   >
                     {isSwapping ? <><Loader2 className="h-4 w-4 animate-spin" /> Swapping...</> : "Swap"}
                   </button>
@@ -955,7 +955,7 @@ export default function Home() {
                   <button
                     onClick={handleApproveA}
                     disabled={isApproving}
-                    className="w-full bg-[#0052ff] hover:bg-[#0045d8] text-white font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-2 text-sm shadow-lg shadow-[#0052ff]/30 active:scale-[0.98] disabled:opacity-60"
+                    className="w-full bg-[#01C38E] hover:bg-[#00ab7c] text-white font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-2 text-sm shadow-lg shadow-[#01C38E]/30 active:scale-[0.98] disabled:opacity-60"
                   >
                     {isApproving ? <><Loader2 className="h-4 w-4 animate-spin" /> Approving...</> : `Approve ${poolTokenA.symbol}`}
                   </button>
@@ -963,7 +963,7 @@ export default function Home() {
                   <button
                     onClick={handleApproveB}
                     disabled={isApproving}
-                    className="w-full bg-[#0052ff] hover:bg-[#0045d8] text-white font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-2 text-sm shadow-lg shadow-[#0052ff]/30 active:scale-[0.98] disabled:opacity-60"
+                    className="w-full bg-[#01C38E] hover:bg-[#00ab7c] text-white font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-2 text-sm shadow-lg shadow-[#01C38E]/30 active:scale-[0.98] disabled:opacity-60"
                   >
                     {isApproving ? <><Loader2 className="h-4 w-4 animate-spin" /> Approving...</> : `Approve ${poolTokenB.symbol}`}
                   </button>
@@ -971,7 +971,7 @@ export default function Home() {
                   <button
                     onClick={handleAddLiquidity}
                     disabled={isSwapping}
-                    className="w-full bg-[#0052ff] hover:bg-[#0045d8] text-white font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-2 text-sm shadow-lg shadow-[#0052ff]/30 active:scale-[0.98] disabled:opacity-60"
+                    className="w-full bg-[#01C38E] hover:bg-[#00ab7c] text-white font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-2 text-sm shadow-lg shadow-[#01C38E]/30 active:scale-[0.98] disabled:opacity-60"
                   >
                     {isSwapping ? <><Loader2 className="h-4 w-4 animate-spin" /> Depositing...</> : "Add Liquidity"}
                   </button>
@@ -994,7 +994,7 @@ export default function Home() {
       {showConnectModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowConnectModal(false)} />
-          <div className="relative bg-[#0c0d12] border border-white/10 rounded-3xl shadow-2xl w-full max-w-sm p-6">
+          <div className="relative bg-[#0c1222] border border-white/10 rounded-3xl shadow-2xl w-full max-w-sm p-6">
             <div className="flex items-center justify-between mb-5">
               <div>
                 <h2 className="text-lg font-bold text-white">Connect Wallet</h2>
@@ -1021,7 +1021,7 @@ export default function Home() {
                     onClick={() => { connect({ connector }); setShowConnectModal(false); }}
                     className="flex items-center gap-4 w-full p-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-2xl transition-all duration-200 group"
                   >
-                    <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-[#0052ff]/20 to-[#ffd700]/20 border border-white/10 flex items-center justify-center flex-shrink-0">
+                    <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-[#01C38E]/20 to-[#01C38E]/20 border border-white/10 flex items-center justify-center flex-shrink-0">
                       <span className="text-xl">{icon}</span>
                     </div>
                     <div className="text-left">
