@@ -47,12 +47,12 @@
 
 ## 📜 Smart Contract Architecture (Base Mainnet - Chain ID: 8453)
 
-| Contract Name | Address | Network | Description & Role |
-| :--- | :--- | :--- | :--- |
-| 🛡️ **`GMDexRouter`** | [`0x9dc3BBdB8817309ba42b79cc357EC6Be47030B70`](https://basescan.org/address/0x9dc3BBdB8817309ba42b79cc357EC6Be47030B70) | Base Mainnet | **Swap Fee Router** — Collects 0.1% swap fee to Treasury and executes swap via Aerodrome Router. |
-| 💧 **`AeroDexLiquidity`** | [`0x379bB6CBd151c8A9C3da6e534E46356e17b14572`](https://basescan.org/address/0x379bB6CBd151c8A9C3da6e534E46356e17b14572) | Base Mainnet | **Liquidity Fee Router** — Collects deposit fee to Treasury and deposits remaining liquidity into Aerodrome pools. |
-| 🔄 **`AeroRouter`** | [`0xcF77aBa9A5CA399B7c97c74d54e5b1Beb874E43`](https://basescan.org/address/0xcF77aBa9A5CA399B7c97c74d54e5b1Beb874E43) | Base Mainnet | **Aerodrome V2 Router** — Handles price quote queries, reserve ratio calculations, and LP withdrawals. |
-| 🏭 **`AeroFactory`** | [`0x420DD381b31aEf6683db6B902084cB0FFECe40Da`](https://basescan.org/address/0x420DD381b31aEf6683db6B902084cB0FFECe40Da) | Base Mainnet | **Aerodrome Pool Factory** — Fetches LP pool addresses for balance tracking and reserve queries. |
+| Component | Network | Description & Role |
+| :--- | :--- | :--- |
+| 🛡️ **`GMDexRouter`** | Base Mainnet | **Swap Fee Router** — Collects 0.1% swap fee to Treasury and executes swap via Aerodrome Router. |
+| 💧 **`AeroDexLiquidity`** | Base Mainnet | **Liquidity Fee Router** — Collects deposit fee to Treasury and deposits remaining liquidity into Aerodrome pools. |
+| 🔄 **`AeroRouter`** | Base Mainnet | **Aerodrome V2 Router** — Handles price quote queries, reserve ratio calculations, and LP withdrawals. |
+| 🏭 **`AeroFactory`** | Base Mainnet | **Aerodrome Pool Factory** — Fetches LP pool addresses for balance tracking and reserve queries. |
 
 ---
 
