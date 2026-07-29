@@ -38,7 +38,7 @@
 
 ### 🌉 3. Fee-Earning Multi-Chain Bridge
 - **15+ Chain Connectivity**: Embedded LI.FI / Jumper cross-chain bridge supporting transfers from Ethereum Mainnet, Arbitrum, Polygon, Optimism, and Solana directly to Base Mainnet.
-- **Automatic 0.1% Treasury Revenue**: Pre-configured with custom integrator fees that automatically pay 0.1% of every cross-chain transfer into the Protocol Treasury (`0xAa81a...`).
+- **Automatic 0.1% Treasury Revenue**: Pre-configured with custom integrator fees that automatically pay 0.1% of every cross-chain transfer into the Protocol Treasury.
 
 ### 🏷️ 4. Base Builder Code Attribution
 - **ERC-8021 Suffix**: Appends standard Base Builder Code (`6a488e6c2876ee6c1138a856`) to swap and liquidity transaction payloads, ensuring maximum ecosystem builder rewards from Coinbase/Base.
@@ -53,7 +53,6 @@
 | 💧 **`AeroDexLiquidity`** | [`0x379bB6CBd151c8A9C3da6e534E46356e17b14572`](https://basescan.org/address/0x379bB6CBd151c8A9C3da6e534E46356e17b14572) | Base Mainnet | **Liquidity Fee Router** — Collects deposit fee to Treasury and deposits remaining liquidity into Aerodrome pools. |
 | 🔄 **`AeroRouter`** | [`0xcF77aBa9A5CA399B7c97c74d54e5b1Beb874E43`](https://basescan.org/address/0xcF77aBa9A5CA399B7c97c74d54e5b1Beb874E43) | Base Mainnet | **Aerodrome V2 Router** — Handles price quote queries, reserve ratio calculations, and LP withdrawals. |
 | 🏭 **`AeroFactory`** | [`0x420DD381b31aEf6683db6B902084cB0FFECe40Da`](https://basescan.org/address/0x420DD381b31aEf6683db6B902084cB0FFECe40Da) | Base Mainnet | **Aerodrome Pool Factory** — Fetches LP pool addresses for balance tracking and reserve queries. |
-| 🏛️ **`Treasury`** | [`0xAa81a036Bf5a2823dAA2Aadbcc66140fAb29CcE9`](https://basescan.org/address/0xAa81a036Bf5a2823dAA2Aadbcc66140fAb29CcE9) | Base Mainnet | **Protocol Treasury Wallet** — Receives all swap fees, deposit fees, and bridge fee payouts. |
 
 ---
 
@@ -74,7 +73,7 @@ graph TB
     end
 
     subgraph Protocol Revenue
-        Treasury["Treasury Wallet (0xAa81a...)"]
+        Treasury["Protocol Treasury"]
         CoinbaseBuilder["Base Builder Rewards (6a488e6c...)"]
     end
 
