@@ -19,7 +19,7 @@
 
 ## 📌 Executive Summary
 
-**GM DEX** is a next-generation decentralized exchange built natively on **Base Mainnet**. Designed with a modern slate-blue and mint-green glassmorphism aesthetic (**XyloNet Theme**), GM DEX combines direct **Aerodrome V2 liquidity routing**, automated protocol fee collection to Treasury, real-time LP position tracking, and standard **Base Builder Code attribution** (`6a488e6c2876ee6c1138a856`).
+**GM DEX** is a next-generation decentralized exchange built natively on **Base Mainnet**. Designed with a modern slate-blue and mint-green glassmorphism dark aesthetic, GM DEX combines direct **Aerodrome V2 liquidity routing**, automated protocol fee collection to Treasury, real-time LP position tracking, and standard **Base Builder Code attribution** (`6a488e6c2876ee6c1138a856`).
 
 ---
 
@@ -30,7 +30,7 @@
 - **Protocol Fee Collection**: Dedicated `GMDexRouter` smart contract collects a 0.1% swap fee directly to the Protocol Treasury.
 - **Zero-Delay Quotes**: Real-time price estimation with minimum slippage guards.
 
-### 💧 2. XyloNet Pools & Liquidity Dashboard
+### 💧 2. Liquidity Pools & LP Dashboard
 - **All-in-One Dashboard**: Live stats for Total Value Locked (TVL), 24h Volume, and Active Pools.
 - **Real-Time LP Tracking**: Automatically queries Aerodrome Pool Factory (`0x420D...`) for connected wallet LP token balances and pool share percentages every 2 seconds.
 - **Fee-Collecting Deposits**: Deposits are processed through `AeroDexLiquidity`, collecting deposit fees straight to Treasury before pooling.
