@@ -717,16 +717,16 @@ contract GMDexLiquidity is Ownable {
         IERC20(tokenA).safeTransferFrom(msg.sender, address(this), amountADesired);
         IERC20(tokenB).safeTransferFrom(msg.sender, address(this), amountBDesired);
 
-        // Deduct fees
-        uint256 feeA = (amountADesired * feeBps) / 10000;
-        uint256 feeB = (amountBDesired * feeBps) / 10000;
-
-        uint256 amountAAfterFee = amountADesired - feeA;
-        uint256 amountBAfterFee = amountBDesired - feeB;
-
-        // Send fees to treasury
-        if (feeA > 0) IERC20(tokenA).safeTransfer(treasury, feeA);
-        if (feeB > 0) IERC20(tokenB).safeTransfer(treasury, feeB);
+        uint256 amountAAfterFee;
+        uint256 amountBAfterFee;
+        {
+            uint256 feeA = (amountADesired * feeBps) / 10000;
+            uint256 feeB = (amountBDesired * feeBps) / 10000;
+            amountAAfterFee = amountADesired - feeA;
+            amountBAfterFee = amountBDesired - feeB;
+            if (feeA > 0) IERC20(tokenA).safeTransfer(treasury, feeA);
+            if (feeB > 0) IERC20(tokenB).safeTransfer(treasury, feeB);
+        }
 
         // Approve Uniswap Router
         IERC20(tokenA).safeIncreaseAllowance(UNISWAP_V2_ROUTER, amountAAfterFee);
@@ -763,18 +763,18 @@ contract GMDexLiquidity is Ownable {
         // Pull token from user
         IERC20(token).safeTransferFrom(msg.sender, address(this), amountTokenDesired);
 
-        // Deduct fees
-        uint256 feeToken = (amountTokenDesired * feeBps) / 10000;
-        uint256 feeETH = (msg.value * feeBps) / 10000;
-
-        uint256 amountTokenAfterFee = amountTokenDesired - feeToken;
-        uint256 amountETHAfterFee = msg.value - feeETH;
-
-        // Send fees to treasury
-        if (feeToken > 0) IERC20(token).safeTransfer(treasury, feeToken);
-        if (feeETH > 0) {
-            (bool success, ) = payable(treasury).call{value: feeETH}("");
-            require(success, "Treasury fee transfer failed");
+        uint256 amountTokenAfterFee;
+        uint256 amountETHAfterFee;
+        {
+            uint256 feeToken = (amountTokenDesired * feeBps) / 10000;
+            uint256 feeETH = (msg.value * feeBps) / 10000;
+            amountTokenAfterFee = amountTokenDesired - feeToken;
+            amountETHAfterFee = msg.value - feeETH;
+            if (feeToken > 0) IERC20(token).safeTransfer(treasury, feeToken);
+            if (feeETH > 0) {
+                (bool success, ) = payable(treasury).call{value: feeETH}("");
+                require(success, "Treasury fee transfer failed");
+            }
         }
 
         // Approve Uniswap Router
