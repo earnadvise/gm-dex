@@ -83,7 +83,8 @@ function WalletButton({ onConnectClick }: { onConnectClick: () => void }) {
 const WETH = "0x4200000000000000000000000000000000000006";
 const UNISWAP_V2_ROUTER = "0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24" as `0x${string}`;
 const GM_DEX_ROUTER = "0x9dc3BBdB8817309ba42b79cc357EC6Be47030B70" as `0x${string}`;
-const GM_DEX_LIQUIDITY = "0xcf77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43" as `0x${string}`;
+const GM_DEX_LIQUIDITY = "0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43" as `0x${string}`;
+const AERO_FACTORY = "0x420DD381b31aEf6683db6B902084cB0FFECe40Da" as `0x${string}`;
 
 const AERO_ROUTER_ABI = [
   {
@@ -305,6 +306,7 @@ export default function Home() {
   const [poolTokenB, setPoolTokenB] = useState(SUPPORTED_TOKENS[1]); // USDC
   const [showPoolADD, setShowPoolADD] = useState(false);
   const [showPoolBDD, setShowPoolBDD] = useState(false);
+  const [activeInput, setActiveInput] = useState<"A" | "B" | null>(null);
 
   // User Balance (Swap)
   const { data: balanceData } = useBalance({
@@ -336,6 +338,7 @@ export default function Home() {
 
   const handleMaxPoolA = () => {
     if (!balanceDataA) return;
+    setActiveInput("A");
     if (!poolTokenA.address) {
       const reserve = 5000000000000000n;
       const maxVal = balanceDataA.value > reserve ? balanceDataA.value - reserve : 0n;
@@ -347,6 +350,7 @@ export default function Home() {
 
   const handleMaxPoolB = () => {
     if (!balanceDataB) return;
+    setActiveInput("B");
     if (!poolTokenB.address) {
       const reserve = 5000000000000000n;
       const maxVal = balanceDataB.value > reserve ? balanceDataB.value - reserve : 0n;
@@ -502,6 +506,76 @@ export default function Home() {
     query: { enabled: isConnected && !!address && !!poolTokenB.address },
   });
 
+  // Check if this pair should be a stable pool on Aerodrome (e.g. USDC/EURC)
+  const isStable = 
+    (poolTokenA.symbol === "USDC" && poolTokenB.symbol === "EURC") ||
+    (poolTokenA.symbol === "EURC" && poolTokenB.symbol === "USDC");
+
+  // Query pool reserves from Aerodrome Router
+  const { data: poolReserves } = useReadContract({
+    address: GM_DEX_LIQUIDITY,
+    abi: [
+      {
+        inputs: [
+          { name: "tokenA", type: "address" },
+          { name: "tokenB", type: "address" },
+          { name: "stable", type: "bool" },
+          { name: "factory", type: "address" }
+        ],
+        name: "getReserves",
+        outputs: [
+          { name: "reserveA", type: "uint256" },
+          { name: "reserveB", type: "uint256" }
+        ],
+        stateMutability: "view",
+        type: "function"
+      }
+    ] as const,
+    functionName: "getReserves",
+    args: poolTokenA && poolTokenB ? [
+      (poolTokenA.address || WETH) as `0x${string}`,
+      (poolTokenB.address || WETH) as `0x${string}`,
+      isStable,
+      AERO_FACTORY
+    ] : undefined,
+    query: { enabled: isConnected && !!poolTokenA && !!poolTokenB }
+  });
+
+  // Automatically calculate paired token amount on inputs
+  useEffect(() => {
+    if (!poolReserves) return;
+    const [reserveA, reserveB] = poolReserves;
+    if (reserveA === 0n || reserveB === 0n) return;
+
+    if (activeInput === "A") {
+      if (!poolAmountA || isNaN(Number(poolAmountA)) || Number(poolAmountA) === 0) {
+        setPoolAmountB("");
+        return;
+      }
+      try {
+        const amtAWei = parseAmt(poolAmountA, poolTokenA.decimals);
+        const amtBWei = (amtAWei * reserveB) / reserveA;
+        const formatted = (Number(amtBWei) / (10 ** poolTokenB.decimals)).toFixed(poolTokenB.decimals);
+        setPoolAmountB(parseFloat(formatted).toString());
+      } catch (err) {
+        console.error(err);
+      }
+    } else if (activeInput === "B") {
+      if (!poolAmountB || isNaN(Number(poolAmountB)) || Number(poolAmountB) === 0) {
+        setPoolAmountA("");
+        return;
+      }
+      try {
+        const amtBWei = parseAmt(poolAmountB, poolTokenB.decimals);
+        const amtAWei = (amtBWei * reserveA) / reserveB;
+        const formatted = (Number(amtAWei) / (10 ** poolTokenA.decimals)).toFixed(poolTokenA.decimals);
+        setPoolAmountA(parseFloat(formatted).toString());
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  }, [poolAmountA, poolAmountB, poolReserves, activeInput, poolTokenA, poolTokenB]);
+
   const isApprovedA = !poolTokenA.address || (allowanceA !== undefined && allowanceA >= poolAmountAWei);
   const isApprovedB = !poolTokenB.address || (allowanceB !== undefined && allowanceB >= poolAmountBWei);
 
@@ -548,11 +622,6 @@ export default function Home() {
       const deadline = BigInt(Math.floor(Date.now() / 1000) + 1200);
       const minA = poolAmountAWei * 95n / 100n; // 5% slippage
       const minB = poolAmountBWei * 95n / 100n;
-
-      // Check if this pair should be a stable pool on Aerodrome (e.g. USDC/EURC)
-      const isStable = 
-        (poolTokenA.symbol === "USDC" && poolTokenB.symbol === "EURC") ||
-        (poolTokenA.symbol === "EURC" && poolTokenB.symbol === "USDC");
 
       let rawData: Hex;
       let value = 0n;
@@ -829,6 +898,7 @@ export default function Home() {
                       inputMode="decimal"
                       placeholder="0"
                       value={poolAmountA}
+                      onFocus={() => setActiveInput("A")}
                       onChange={(e) => { setPoolAmountA(e.target.value); setError(""); setTxHash(""); }}
                       className="bg-transparent text-[28px] font-bold text-white outline-none w-full placeholder-zinc-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
@@ -890,6 +960,7 @@ export default function Home() {
                       inputMode="decimal"
                       placeholder="0"
                       value={poolAmountB}
+                      onFocus={() => setActiveInput("B")}
                       onChange={(e) => { setPoolAmountB(e.target.value); setError(""); setTxHash(""); }}
                       className="bg-transparent text-[28px] font-bold text-white outline-none w-full placeholder-zinc-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
