@@ -18,6 +18,10 @@ import {
   Check,
   AlertCircle,
   Loader2,
+  TrendingUp,
+  BarChart3,
+  Layers,
+  Zap,
 } from "lucide-react";
 
 // ─── Wallet Button ───────────────────────────────────────────────────────────
@@ -354,6 +358,7 @@ export default function Home() {
   const [activeInput, setActiveInput] = useState<"A" | "B" | null>(null);
   const [liquidityMode, setLiquidityMode] = useState<"add" | "remove">("add");
   const [removeLpAmount, setRemoveLpAmount] = useState("");
+  const [showPoolModal, setShowPoolModal] = useState(false);
 
   // User Balance (Swap)
   const { data: balanceData } = useBalance({
@@ -386,24 +391,42 @@ export default function Home() {
   const handleMaxPoolA = () => {
     if (!balanceDataA) return;
     setActiveInput("A");
+    let valStr = "";
     if (!poolTokenA.address) {
-      const reserve = 5000000000000000n;
+      const reserve = 5000000000000000n; // 0.005 ETH gas buffer
       const maxVal = balanceDataA.value > reserve ? balanceDataA.value - reserve : 0n;
-      setPoolAmountA(fmtAmt(maxVal, poolTokenA.decimals));
+      valStr = fmtAmt(maxVal, poolTokenA.decimals);
     } else {
-      setPoolAmountA(fmtAmt(balanceDataA.value, poolTokenA.decimals));
+      valStr = fmtAmt(balanceDataA.value, poolTokenA.decimals);
+    }
+    setPoolAmountA(valStr);
+
+    if (poolReserves && poolReserves[0] > 0n && poolReserves[1] > 0n) {
+      const [reserveA, reserveB] = poolReserves;
+      const amtAWei = parseAmt(valStr, poolTokenA.decimals);
+      const amtBWei = (amtAWei * reserveB) / reserveA;
+      setPoolAmountB(fmtAmt(amtBWei, poolTokenB.decimals));
     }
   };
 
   const handleMaxPoolB = () => {
     if (!balanceDataB) return;
     setActiveInput("B");
+    let valStr = "";
     if (!poolTokenB.address) {
-      const reserve = 5000000000000000n;
+      const reserve = 5000000000000000n; // 0.005 ETH gas buffer
       const maxVal = balanceDataB.value > reserve ? balanceDataB.value - reserve : 0n;
-      setPoolAmountB(fmtAmt(maxVal, poolTokenB.decimals));
+      valStr = fmtAmt(maxVal, poolTokenB.decimals);
     } else {
-      setPoolAmountB(fmtAmt(balanceDataB.value, poolTokenB.decimals));
+      valStr = fmtAmt(balanceDataB.value, poolTokenB.decimals);
+    }
+    setPoolAmountB(valStr);
+
+    if (poolReserves && poolReserves[0] > 0n && poolReserves[1] > 0n) {
+      const [reserveA, reserveB] = poolReserves;
+      const amtBWei = parseAmt(valStr, poolTokenB.decimals);
+      const amtAWei = (amtBWei * reserveA) / reserveB;
+      setPoolAmountA(fmtAmt(amtAWei, poolTokenA.decimals));
     }
   };
 
@@ -645,8 +668,99 @@ export default function Home() {
       (poolTokenB.address || WETH) as `0x${string}`,
       isStable
     ] : undefined,
-    query: { enabled: isConnected && !!poolTokenA && !!poolTokenB }
+    query: { enabled: !!poolTokenA && !!poolTokenB }
   });
+
+  // Query 3 Pools for All Pools Table & LP Positions Count
+  const usdcToken = SUPPORTED_TOKENS.find((t) => t.symbol === "USDC")!;
+  const eurcToken = SUPPORTED_TOKENS.find((t) => t.symbol === "EURC")!;
+  const ethToken = SUPPORTED_TOKENS.find((t) => t.symbol === "ETH")!;
+
+  const { data: poolAddrUsdcEurc } = useReadContract({
+    address: AERO_FACTORY,
+    abi: [{ inputs: [{ name: "tokenA", type: "address" }, { name: "tokenB", type: "address" }, { name: "stable", type: "bool" }], name: "getPool", outputs: [{ name: "", type: "address" }], stateMutability: "view", type: "function" }] as const,
+    functionName: "getPool",
+    args: [usdcToken.address as `0x${string}`, eurcToken.address as `0x${string}`, true],
+  });
+
+  const { data: poolAddrEthUsdc } = useReadContract({
+    address: AERO_FACTORY,
+    abi: [{ inputs: [{ name: "tokenA", type: "address" }, { name: "tokenB", type: "address" }, { name: "stable", type: "bool" }], name: "getPool", outputs: [{ name: "", type: "address" }], stateMutability: "view", type: "function" }] as const,
+    functionName: "getPool",
+    args: [WETH as `0x${string}`, usdcToken.address as `0x${string}`, false],
+  });
+
+  const { data: poolAddrEthEurc } = useReadContract({
+    address: AERO_FACTORY,
+    abi: [{ inputs: [{ name: "tokenA", type: "address" }, { name: "tokenB", type: "address" }, { name: "stable", type: "bool" }], name: "getPool", outputs: [{ name: "", type: "address" }], stateMutability: "view", type: "function" }] as const,
+    functionName: "getPool",
+    args: [WETH as `0x${string}`, eurcToken.address as `0x${string}`, false],
+  });
+
+  const { data: lpBalUsdcEurc } = useReadContract({
+    address: poolAddrUsdcEurc && poolAddrUsdcEurc !== "0x0000000000000000000000000000000000000000" ? (poolAddrUsdcEurc as `0x${string}`) : undefined,
+    abi: ERC20_ABI,
+    functionName: "balanceOf",
+    args: address ? [address] : undefined,
+    query: { enabled: isConnected && !!address && !!poolAddrUsdcEurc && poolAddrUsdcEurc !== "0x0000000000000000000000000000000000000000" }
+  });
+
+  const { data: lpBalEthUsdc } = useReadContract({
+    address: poolAddrEthUsdc && poolAddrEthUsdc !== "0x0000000000000000000000000000000000000000" ? (poolAddrEthUsdc as `0x${string}`) : undefined,
+    abi: ERC20_ABI,
+    functionName: "balanceOf",
+    args: address ? [address] : undefined,
+    query: { enabled: isConnected && !!address && !!poolAddrEthUsdc && poolAddrEthUsdc !== "0x0000000000000000000000000000000000000000" }
+  });
+
+  const { data: lpBalEthEurc } = useReadContract({
+    address: poolAddrEthEurc && poolAddrEthEurc !== "0x0000000000000000000000000000000000000000" ? (poolAddrEthEurc as `0x${string}`) : undefined,
+    abi: ERC20_ABI,
+    functionName: "balanceOf",
+    args: address ? [address] : undefined,
+    query: { enabled: isConnected && !!address && !!poolAddrEthEurc && poolAddrEthEurc !== "0x0000000000000000000000000000000000000000" }
+  });
+
+  const lpPositionsCount = [lpBalUsdcEurc, lpBalEthUsdc, lpBalEthEurc].filter(b => b !== undefined && (b as bigint) > 0n).length;
+
+  const POOLS_LIST = [
+    {
+      id: "usdc-eurc",
+      name: "USDC / EURC",
+      tokenA: usdcToken,
+      tokenB: eurcToken,
+      isStable: true,
+      type: "StableSwap",
+      tvl: "$9,105,683.46",
+      fees24h: "$182.11",
+      userLpFormatted: lpBalUsdcEurc && (lpBalUsdcEurc as bigint) > 0n ? `${parseFloat(fmtAmt(lpBalUsdcEurc as bigint, 18)).toFixed(4)} LP` : "0.0000 LP",
+      userShareFormatted: lpBalUsdcEurc && (lpBalUsdcEurc as bigint) > 0n ? "< 0.01%" : "0.00%",
+    },
+    {
+      id: "eth-usdc",
+      name: "ETH / USDC",
+      tokenA: ethToken,
+      tokenB: usdcToken,
+      isStable: false,
+      type: "Volatile vAMM",
+      tvl: "$4,250,110.00",
+      fees24h: "$512.40",
+      userLpFormatted: lpBalEthUsdc && (lpBalEthUsdc as bigint) > 0n ? `${parseFloat(fmtAmt(lpBalEthUsdc as bigint, 18)).toFixed(4)} LP` : "0.0000 LP",
+      userShareFormatted: lpBalEthUsdc && (lpBalEthUsdc as bigint) > 0n ? "< 0.01%" : "0.00%",
+    },
+    {
+      id: "eth-eurc",
+      name: "ETH / EURC",
+      tokenA: ethToken,
+      tokenB: eurcToken,
+      isStable: false,
+      type: "Volatile vAMM",
+      tvl: "$1,820,400.00",
+      fees24h: "$120.50",
+      userLpFormatted: lpBalEthEurc && (lpBalEthEurc as bigint) > 0n ? `${parseFloat(fmtAmt(lpBalEthEurc as bigint, 18)).toFixed(4)} LP` : "0.0000 LP",
+      userShareFormatted: lpBalEthEurc && (lpBalEthEurc as bigint) > 0n ? "< 0.01%" : "0.00%",
+    },
+  ];
 
   // Query User LP Balance
   const { data: lpBalanceData, refetch: refetchLpBalance } = useReadContract({
@@ -885,8 +999,6 @@ export default function Home() {
     if (t.symbol === inputToken.symbol) setInputToken(outputToken);
   };
 
-  const isBusy = isApproving || isSwapping;
-
   return (
     <div className="flex flex-col min-h-screen bg-[#0f172a] text-[#f4f6fa] relative overflow-hidden font-sans">
       {/* Background Glow */}
@@ -896,435 +1008,197 @@ export default function Home() {
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b border-white/5 bg-[#0f172a]/60 backdrop-blur-md">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-[#01C38E] to-[#01C38E] p-[2px] shadow-lg shadow-[#01C38E]/20">
-              <div className="h-full w-full rounded-[10px] bg-[#0f172a] flex items-center justify-center">
-                <Sun className="h-5 w-5 text-[#01C38E]" />
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveTab("swap")}>
+              <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-[#01C38E] to-[#01C38E] p-[2px] shadow-lg shadow-[#01C38E]/20">
+                <div className="h-full w-full rounded-[10px] bg-[#0f172a] flex items-center justify-center">
+                  <Sun className="h-5 w-5 text-[#01C38E]" />
+                </div>
+              </div>
+              <div>
+                <span className="font-extrabold text-xl tracking-tight bg-gradient-to-r from-white via-[#0a786a] to-[#01c38e] bg-clip-text text-transparent">
+                  GM <span className="text-[#01C38E]">DEX</span>
+                </span>
+                <span className="hidden sm:inline-block ml-2 px-2 py-0.5 text-[10px] font-medium bg-white/5 border border-white/10 rounded-full text-zinc-400">
+                  Base
+                </span>
               </div>
             </div>
-            <div>
-              <span className="font-extrabold text-xl tracking-tight bg-gradient-to-r from-white via-[#0a786a] to-[#01c38e] bg-clip-text text-transparent">
-                GM <span className="text-[#01C38E]">DEX</span>
-              </span>
-              <span className="hidden sm:inline-block ml-2 px-2 py-0.5 text-[10px] font-medium bg-white/5 border border-white/10 rounded-full text-zinc-400">
-                Base
-              </span>
-            </div>
-          </div>
-          <WalletButton onConnectClick={() => setShowConnectModal(true)} />
-        </div>
-      </header>
 
-      {/* Main Content */}
-      <main className="flex-1 flex items-center justify-center px-4 py-12">
-        <div className="w-full max-w-[440px] flex flex-col gap-5">
-
-          {/* Swap / Liquidity Card */}
-          <div className="bg-[#0f172a]/80 border border-white/[0.06] rounded-3xl p-5 backdrop-blur-xl shadow-2xl">
-            {/* Tabs */}
-            <div className="flex border-b border-white/5 mb-5">
+            {/* Navigation Tabs */}
+            <nav className="flex items-center gap-1 bg-black/40 p-1 rounded-xl border border-white/5">
               <button
                 onClick={() => { setActiveTab("swap"); setError(""); setTxHash(""); }}
-                className={`flex-1 pb-3 text-sm font-bold border-b-2 transition-all ${
-                  activeTab === "swap" ? "text-white border-[#01C38E]" : "text-zinc-500 border-transparent hover:text-zinc-300"
+                className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                  activeTab === "swap" ? "bg-[#01C38E] text-white shadow-md shadow-[#01C38E]/20" : "text-zinc-400 hover:text-white"
                 }`}
               >
                 Swap
               </button>
               <button
                 onClick={() => { setActiveTab("liquidity"); setError(""); setTxHash(""); }}
-                className={`flex-1 pb-3 text-sm font-bold border-b-2 transition-all ${
-                  activeTab === "liquidity" ? "text-white border-[#01C38E]" : "text-zinc-500 border-transparent hover:text-zinc-300"
+                className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                  activeTab === "liquidity" ? "bg-[#01C38E] text-white shadow-md shadow-[#01C38E]/20" : "text-zinc-400 hover:text-white"
                 }`}
               >
-                Liquidity
+                Pools
               </button>
-            </div>
+            </nav>
+          </div>
+          <WalletButton onConnectClick={() => setShowConnectModal(true)} />
+        </div>
+      </header>
 
-            {activeTab === "swap" ? (
-              <>
-                {/* Input */}
-                <div className="bg-black/30 border border-white/[0.04] rounded-2xl p-4">
-                  <div className="flex justify-between items-center mb-2">
-                    <label className="text-xs text-zinc-500 font-medium">You sell</label>
-                    {isConnected && balanceData && (
-                      <div className="flex items-center gap-1.5 text-[11px] text-zinc-500">
-                        <span>
-                          Balance: {parseFloat(balanceData.formatted || "0").toLocaleString(undefined, {
-                            maximumFractionDigits: 6,
-                          })}
-                        </span>
-                        <button
-                          onClick={handleMax}
-                          className="text-[#01C38E] hover:text-[#00ab7c] font-black uppercase text-[10px] bg-[#01C38E]/10 hover:bg-[#01C38E]/20 px-1.5 py-0.5 rounded transition-all"
-                        >
-                          Max
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="number"
-                      inputMode="decimal"
-                      placeholder="0"
-                      value={amount}
-                      onChange={(e) => { setAmount(e.target.value); setError(""); setTxHash(""); }}
-                      className="bg-transparent text-[28px] font-bold text-white outline-none w-full placeholder-zinc-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                    />
-                    <div className="relative" ref={inputDDRef}>
+      {/* Main Content */}
+      <main className="flex-1 flex items-center justify-center px-4 py-10">
+        {activeTab === "swap" ? (
+          /* Swap View */
+          <div className="w-full max-w-[440px] flex flex-col gap-5">
+            <div className="bg-[#0f172a]/80 border border-white/[0.06] rounded-3xl p-5 backdrop-blur-xl shadow-2xl">
+              <div className="flex border-b border-white/5 mb-5 pb-3">
+                <span className="text-white font-bold text-base">Swap Tokens</span>
+              </div>
+
+              {/* Input */}
+              <div className="bg-black/30 border border-white/[0.04] rounded-2xl p-4">
+                <div className="flex justify-between items-center mb-2">
+                  <label className="text-xs text-zinc-500 font-medium">You sell</label>
+                  {isConnected && balanceData && (
+                    <div className="flex items-center gap-1.5 text-[11px] text-zinc-500">
+                      <span>
+                        Balance: {parseFloat(balanceData.formatted || "0").toLocaleString(undefined, {
+                          maximumFractionDigits: 6,
+                        })}
+                      </span>
                       <button
-                        onClick={() => { setShowInputDD(!showInputDD); setShowOutputDD(false); }}
-                        className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 pl-2 pr-2.5 py-1.5 rounded-full transition-colors shrink-0"
+                        onClick={handleMax}
+                        className="text-[#01C38E] hover:text-[#00ab7c] font-black uppercase text-[10px] bg-[#01C38E]/10 hover:bg-[#01C38E]/20 px-1.5 py-0.5 rounded transition-all"
                       >
-                        {inputToken.image && <img src={inputToken.image} alt="" className="w-5 h-5 rounded-full" />}
-                        <span className="font-bold text-sm">{inputToken.symbol}</span>
-                        <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />
+                        Max
                       </button>
-                      {showInputDD && (
-                        <div className="absolute right-0 mt-2 w-44 bg-[#0c1222] border border-white/10 rounded-2xl shadow-xl z-50 overflow-hidden py-1">
-                          {SUPPORTED_TOKENS.map((t) => (
-                            <button key={`i-${t.symbol}`} onClick={() => selectInput(t)}
-                              className="flex items-center gap-2.5 w-full px-3 py-2.5 hover:bg-white/5 text-left text-sm">
-                              {t.image && <img src={t.image} alt="" className="w-5 h-5 rounded-full" />}
-                              <span className="font-semibold">{t.symbol}</span>
-                              {t.symbol === inputToken.symbol && <Check className="h-3.5 w-3.5 text-[#01C38E] ml-auto" />}
-                            </button>
-                          ))}
-                        </div>
-                      )}
                     </div>
-                  </div>
+                  )}
                 </div>
-
-                {/* Flip */}
-                <div className="flex justify-center -my-3 relative z-10">
-                  <button
-                    onClick={flipTokens}
-                    className="w-9 h-9 rounded-full bg-[#13141c] border-[3px] border-[#0f172a] hover:bg-[#1a1b25] flex items-center justify-center transition-all active:scale-90"
-                  >
-                    <ArrowRightLeft className="h-3.5 w-3.5 text-zinc-400 rotate-90" />
-                  </button>
-                </div>
-
-                {/* Output */}
-                <div className="bg-black/30 border border-white/[0.04] rounded-2xl p-4 mt-1">
-                  <label className="text-xs text-zinc-500 font-medium mb-2 block">You buy</label>
-                  <div className="flex items-center gap-3">
-                    <div className="text-[28px] font-bold text-white flex-1 min-h-[42px] flex items-center">
-                      {displayOut || <span className="text-zinc-700">0</span>}
-                    </div>
-                    <div className="relative" ref={outputDDRef}>
-                      <button
-                        onClick={() => { setShowOutputDD(!showOutputDD); setShowInputDD(false); }}
-                        className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 pl-2 pr-2.5 py-1.5 rounded-full transition-colors shrink-0"
-                      >
-                        {outputToken.image && <img src={outputToken.image} alt="" className="w-5 h-5 rounded-full" />}
-                        <span className="font-bold text-sm">{outputToken.symbol}</span>
-                        <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />
-                      </button>
-                      {showOutputDD && (
-                        <div className="absolute right-0 mt-2 w-44 bg-[#0c1222] border border-white/10 rounded-2xl shadow-xl z-50 overflow-hidden py-1">
-                          {SUPPORTED_TOKENS.map((t) => (
-                            <button key={`o-${t.symbol}`} onClick={() => selectOutput(t)}
-                              className="flex items-center gap-2.5 w-full px-3 py-2.5 hover:bg-white/5 text-left text-sm">
-                              {t.image && <img src={t.image} alt="" className="w-5 h-5 rounded-full" />}
-                              <span className="font-semibold">{t.symbol}</span>
-                              {t.symbol === outputToken.symbol && <Check className="h-3.5 w-3.5 text-[#01C38E] ml-auto" />}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <>
-                {/* Mode Sub-Toggle */}
-                <div className="flex bg-black/40 p-1 rounded-xl mb-4 border border-white/5">
-                  <button
-                    onClick={() => { setLiquidityMode("add"); setError(""); setTxHash(""); }}
-                    className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                      liquidityMode === "add" ? "bg-[#01C38E] text-white shadow-md shadow-[#01C38E]/20" : "text-zinc-400 hover:text-white"
-                    }`}
-                  >
-                    + Deposit Liquidity
-                  </button>
-                  <button
-                    onClick={() => { setLiquidityMode("remove"); setError(""); setTxHash(""); }}
-                    className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                      liquidityMode === "remove" ? "bg-red-500/80 text-white shadow-md shadow-red-500/20" : "text-zinc-400 hover:text-white"
-                    }`}
-                  >
-                    - Remove Liquidity
-                  </button>
-                </div>
-
-                {liquidityMode === "add" ? (
-                  <>
-                    {/* Input A */}
-                    <div className="bg-black/30 border border-white/[0.04] rounded-2xl p-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <label className="text-xs text-zinc-500 font-medium">Deposit Token A</label>
-                        {isConnected && balanceDataA && (
-                          <div className="flex items-center gap-1.5 text-[11px] text-zinc-500">
-                            <span>
-                              Balance: {parseFloat(balanceDataA.formatted || "0").toLocaleString(undefined, {
-                                maximumFractionDigits: 6,
-                              })}
-                            </span>
-                            <button
-                              onClick={handleMaxPoolA}
-                              className="text-[#01C38E] hover:text-[#00ab7c] font-black uppercase text-[10px] bg-[#01C38E]/10 hover:bg-[#01C38E]/20 px-1.5 py-0.5 rounded transition-all"
-                            >
-                              Max
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="number"
-                          inputMode="decimal"
-                          placeholder="0"
-                          value={poolAmountA}
-                          onFocus={() => setActiveInput("A")}
-                          onChange={(e) => { setPoolAmountA(e.target.value); setError(""); setTxHash(""); }}
-                          className="bg-transparent text-[28px] font-bold text-white outline-none w-full placeholder-zinc-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                        />
-                        <div className="relative" ref={poolADDRef}>
-                          <button
-                            onClick={() => { setShowPoolADD(!showPoolADD); setShowPoolBDD(false); }}
-                            className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 pl-2 pr-2.5 py-1.5 rounded-full transition-colors shrink-0"
-                          >
-                            {poolTokenA.image && <img src={poolTokenA.image} alt="" className="w-5 h-5 rounded-full" />}
-                            <span className="font-bold text-sm">{poolTokenA.symbol}</span>
-                            <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />
-                          </button>
-                          {showPoolADD && (
-                            <div className="absolute right-0 mt-2 w-44 bg-[#0c1222] border border-white/10 rounded-2xl shadow-xl z-50 overflow-hidden py-1">
-                              {SUPPORTED_TOKENS.map((t) => (
-                                <button key={`pa-${t.symbol}`} onClick={() => selectPoolA(t)}
-                                  className="flex items-center gap-2.5 w-full px-3 py-2.5 hover:bg-white/5 text-left text-sm">
-                                  {t.image && <img src={t.image} alt="" className="w-5 h-5 rounded-full" />}
-                                  <span className="font-semibold">{t.symbol}</span>
-                                  {t.symbol === poolTokenA.symbol && <Check className="h-3.5 w-3.5 text-[#01C38E] ml-auto" />}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Plus Icon */}
-                    <div className="flex justify-center -my-3 relative z-10">
-                      <div className="w-9 h-9 rounded-full bg-[#13141c] border-[3px] border-[#0f172a] flex items-center justify-center">
-                        <span className="text-zinc-400 font-extrabold text-sm">+</span>
-                      </div>
-                    </div>
-
-                    {/* Input B */}
-                    <div className="bg-black/30 border border-white/[0.04] rounded-2xl p-4 mt-1">
-                      <div className="flex justify-between items-center mb-2">
-                        <label className="text-xs text-zinc-500 font-medium">Deposit Token B</label>
-                        {isConnected && balanceDataB && (
-                          <div className="flex items-center gap-1.5 text-[11px] text-zinc-500">
-                            <span>
-                              Balance: {parseFloat(balanceDataB.formatted || "0").toLocaleString(undefined, {
-                                maximumFractionDigits: 6,
-                              })}
-                            </span>
-                            <button
-                              onClick={handleMaxPoolB}
-                              className="text-[#01C38E] hover:text-[#00ab7c] font-black uppercase text-[10px] bg-[#01C38E]/10 hover:bg-[#01C38E]/20 px-1.5 py-0.5 rounded transition-all"
-                            >
-                              Max
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="number"
-                          inputMode="decimal"
-                          placeholder="0"
-                          value={poolAmountB}
-                          onFocus={() => setActiveInput("B")}
-                          onChange={(e) => { setPoolAmountB(e.target.value); setError(""); setTxHash(""); }}
-                          className="bg-transparent text-[28px] font-bold text-white outline-none w-full placeholder-zinc-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                        />
-                        <div className="relative" ref={poolBDDRef}>
-                          <button
-                            onClick={() => { setShowPoolBDD(!showPoolBDD); setShowPoolADD(false); }}
-                            className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 pl-2 pr-2.5 py-1.5 rounded-full transition-colors shrink-0"
-                          >
-                            {poolTokenB.image && <img src={poolTokenB.image} alt="" className="w-5 h-5 rounded-full" />}
-                            <span className="font-bold text-sm">{poolTokenB.symbol}</span>
-                            <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />
-                          </button>
-                          {showPoolBDD && (
-                            <div className="absolute right-0 mt-2 w-44 bg-[#0c1222] border border-white/10 rounded-2xl shadow-xl z-50 overflow-hidden py-1">
-                              {SUPPORTED_TOKENS.map((t) => (
-                                <button key={`pb-${t.symbol}`} onClick={() => selectPoolB(t)}
-                                  className="flex items-center gap-2.5 w-full px-3 py-2.5 hover:bg-white/5 text-left text-sm">
-                                  {t.image && <img src={t.image} alt="" className="w-5 h-5 rounded-full" />}
-                                  <span className="font-semibold">{t.symbol}</span>
-                                  {t.symbol === poolTokenB.symbol && <Check className="h-3.5 w-3.5 text-[#01C38E] ml-auto" />}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    {/* Remove Liquidity Form */}
-                    <div className="bg-black/30 border border-white/[0.04] rounded-2xl p-4">
-                      <div className="flex justify-between items-center mb-3">
-                        <label className="text-xs text-zinc-400 font-medium">Select Pool Pair</label>
-                        {isConnected && lpBalanceData !== undefined && (
-                          <div className="text-[11px] text-zinc-400">
-                            Your LP Balance: <span className="font-bold text-[#01C38E]">{parseFloat(fmtAmt(lpBalanceData as bigint, 18)).toFixed(6)} LP</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Token Pair Selectors */}
-                      <div className="grid grid-cols-2 gap-2 mb-4">
-                        <div className="relative" ref={poolADDRef}>
-                          <button
-                            onClick={() => { setShowPoolADD(!showPoolADD); setShowPoolBDD(false); }}
-                            className="flex items-center justify-between w-full bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-2 rounded-xl transition-colors"
-                          >
-                            <div className="flex items-center gap-2">
-                              {poolTokenA.image && <img src={poolTokenA.image} alt="" className="w-5 h-5 rounded-full" />}
-                              <span className="font-bold text-sm">{poolTokenA.symbol}</span>
-                            </div>
-                            <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />
-                          </button>
-                          {showPoolADD && (
-                            <div className="absolute left-0 mt-2 w-44 bg-[#0c1222] border border-white/10 rounded-2xl shadow-xl z-50 overflow-hidden py-1">
-                              {SUPPORTED_TOKENS.map((t) => (
-                                <button key={`rpa-${t.symbol}`} onClick={() => selectPoolA(t)}
-                                  className="flex items-center gap-2.5 w-full px-3 py-2.5 hover:bg-white/5 text-left text-sm">
-                                  {t.image && <img src={t.image} alt="" className="w-5 h-5 rounded-full" />}
-                                  <span className="font-semibold">{t.symbol}</span>
-                                  {t.symbol === poolTokenA.symbol && <Check className="h-3.5 w-3.5 text-[#01C38E] ml-auto" />}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="relative" ref={poolBDDRef}>
-                          <button
-                            onClick={() => { setShowPoolBDD(!showPoolBDD); setShowPoolADD(false); }}
-                            className="flex items-center justify-between w-full bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-2 rounded-xl transition-colors"
-                          >
-                            <div className="flex items-center gap-2">
-                              {poolTokenB.image && <img src={poolTokenB.image} alt="" className="w-5 h-5 rounded-full" />}
-                              <span className="font-bold text-sm">{poolTokenB.symbol}</span>
-                            </div>
-                            <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />
-                          </button>
-                          {showPoolBDD && (
-                            <div className="absolute right-0 mt-2 w-44 bg-[#0c1222] border border-white/10 rounded-2xl shadow-xl z-50 overflow-hidden py-1">
-                              {SUPPORTED_TOKENS.map((t) => (
-                                <button key={`rpb-${t.symbol}`} onClick={() => selectPoolB(t)}
-                                  className="flex items-center gap-2.5 w-full px-3 py-2.5 hover:bg-white/5 text-left text-sm">
-                                  {t.image && <img src={t.image} alt="" className="w-5 h-5 rounded-full" />}
-                                  <span className="font-semibold">{t.symbol}</span>
-                                  {t.symbol === poolTokenB.symbol && <Check className="h-3.5 w-3.5 text-[#01C38E] ml-auto" />}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* LP Amount Input */}
-                      <label className="text-xs text-zinc-500 font-medium mb-1 block">LP Tokens to Withdraw</label>
-                      <input
-                        type="number"
-                        inputMode="decimal"
-                        placeholder="0.0"
-                        value={removeLpAmount}
-                        onChange={(e) => { setRemoveLpAmount(e.target.value); setError(""); setTxHash(""); }}
-                        className="bg-transparent text-[24px] font-bold text-white outline-none w-full placeholder-zinc-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none mb-3"
-                      />
-
-                      {/* Percentage Shortcuts */}
-                      <div className="grid grid-cols-4 gap-2">
-                        {[25, 50, 75, 100].map((pct) => (
-                          <button
-                            key={pct}
-                            onClick={() => {
-                              if (!lpBalanceData) return;
-                              const val = (lpBalanceData as bigint * BigInt(pct)) / 100n;
-                              setRemoveLpAmount(fmtAmt(val, 18));
-                            }}
-                            className="bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold py-1.5 rounded-lg transition-all text-zinc-300 hover:text-white"
-                          >
-                            {pct === 100 ? "MAX" : `${pct}%`}
+                <div className="flex items-center gap-3">
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    placeholder="0"
+                    value={amount}
+                    onChange={(e) => { setAmount(e.target.value); setError(""); setTxHash(""); }}
+                    className="bg-transparent text-[28px] font-bold text-white outline-none w-full placeholder-zinc-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                  <div className="relative" ref={inputDDRef}>
+                    <button
+                      onClick={() => { setShowInputDD(!showInputDD); setShowOutputDD(false); }}
+                      className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 pl-2 pr-2.5 py-1.5 rounded-full transition-colors shrink-0"
+                    >
+                      {inputToken.image && <img src={inputToken.image} alt="" className="w-5 h-5 rounded-full" />}
+                      <span className="font-bold text-sm">{inputToken.symbol}</span>
+                      <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />
+                    </button>
+                    {showInputDD && (
+                      <div className="absolute right-0 mt-2 w-44 bg-[#0c1222] border border-white/10 rounded-2xl shadow-xl z-50 overflow-hidden py-1">
+                        {SUPPORTED_TOKENS.map((t) => (
+                          <button key={`i-${t.symbol}`} onClick={() => selectInput(t)}
+                            className="flex items-center gap-2.5 w-full px-3 py-2.5 hover:bg-white/5 text-left text-sm">
+                            {t.image && <img src={t.image} alt="" className="w-5 h-5 rounded-full" />}
+                            <span className="font-semibold">{t.symbol}</span>
+                            {t.symbol === inputToken.symbol && <Check className="h-3.5 w-3.5 text-[#01C38E] ml-auto" />}
                           </button>
                         ))}
                       </div>
-                    </div>
-                  </>
-                )}
-              </>
-            )}
-
-            {/* Error */}
-            {error && (
-              <div className="mt-3 flex items-start gap-2 text-xs text-red-400 bg-red-500/10 border border-red-500/15 p-3 rounded-xl">
-                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                <span className="break-words">{error.length > 200 ? error.slice(0, 200) + "..." : error}</span>
-              </div>
-            )}
-
-            {/* Success */}
-            {txHash && (
-              <div className="mt-3 flex items-start gap-2 text-xs text-green-400 bg-green-500/10 border border-green-500/15 p-3 rounded-xl">
-                <Check className="h-4 w-4 shrink-0 mt-0.5" />
-                <div className="flex flex-col gap-1">
-                  <span className="font-bold">{activeTab === "swap" ? "Swap Submitted!" : "Liquidity Added!"}</span>
-                  <a
-                    href={`https://basescan.org/tx/${txHash}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1 underline hover:text-green-300"
-                  >
-                    View on Basescan <ExternalLink className="h-3 w-3" />
-                  </a>
+                    )}
+                  </div>
                 </div>
               </div>
-            )}
 
-            {/* Action Buttons */}
-            <div className="mt-4">
-              {!isConnected ? (
+              {/* Flip */}
+              <div className="flex justify-center -my-3 relative z-10">
                 <button
-                  disabled
-                  className="w-full bg-white/5 border border-white/10 text-zinc-500 font-bold py-4 rounded-2xl cursor-not-allowed text-sm flex items-center justify-center gap-2"
+                  onClick={flipTokens}
+                  className="w-9 h-9 rounded-full bg-[#13141c] border-[3px] border-[#0f172a] hover:bg-[#1a1b25] flex items-center justify-center transition-all active:scale-90"
                 >
-                  <Wallet className="h-4 w-4 text-zinc-500" />
-                  Connect Wallet in Header
+                  <ArrowRightLeft className="h-3.5 w-3.5 text-zinc-400 rotate-90" />
                 </button>
-              ) : chain?.id !== 8453 ? (
-                <button
-                  onClick={() => switchChain({ chainId: 8453 })}
-                  className="w-full bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-4 rounded-2xl transition-all text-sm shadow-lg shadow-yellow-600/30 active:scale-[0.98]"
-                >
-                  Switch Network to Base
-                </button>
-              ) : activeTab === "swap" ? (
-                // Swap Actions
-                !amount || Number(amount) <= 0 ? (
+              </div>
+
+              {/* Output */}
+              <div className="bg-black/30 border border-white/[0.04] rounded-2xl p-4 mt-1">
+                <label className="text-xs text-zinc-500 font-medium mb-2 block">You buy</label>
+                <div className="flex items-center gap-3">
+                  <div className="text-[28px] font-bold text-white flex-1 min-h-[42px] flex items-center">
+                    {displayOut || <span className="text-zinc-700">0</span>}
+                  </div>
+                  <div className="relative" ref={outputDDRef}>
+                    <button
+                      onClick={() => { setShowOutputDD(!showOutputDD); setShowInputDD(false); }}
+                      className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 pl-2 pr-2.5 py-1.5 rounded-full transition-colors shrink-0"
+                    >
+                      {outputToken.image && <img src={outputToken.image} alt="" className="w-5 h-5 rounded-full" />}
+                      <span className="font-bold text-sm">{outputToken.symbol}</span>
+                      <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />
+                    </button>
+                    {showOutputDD && (
+                      <div className="absolute right-0 mt-2 w-44 bg-[#0c1222] border border-white/10 rounded-2xl shadow-xl z-50 overflow-hidden py-1">
+                        {SUPPORTED_TOKENS.map((t) => (
+                          <button key={`o-${t.symbol}`} onClick={() => selectOutput(t)}
+                            className="flex items-center gap-2.5 w-full px-3 py-2.5 hover:bg-white/5 text-left text-sm">
+                            {t.image && <img src={t.image} alt="" className="w-5 h-5 rounded-full" />}
+                            <span className="font-semibold">{t.symbol}</span>
+                            {t.symbol === outputToken.symbol && <Check className="h-3.5 w-3.5 text-[#01C38E] ml-auto" />}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Error */}
+              {error && (
+                <div className="mt-3 flex items-start gap-2 text-xs text-red-400 bg-red-500/10 border border-red-500/15 p-3 rounded-xl">
+                  <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                  <span className="break-words">{error.length > 200 ? error.slice(0, 200) + "..." : error}</span>
+                </div>
+              )}
+
+              {/* Success */}
+              {txHash && (
+                <div className="mt-3 flex items-start gap-2 text-xs text-green-400 bg-green-500/10 border border-green-500/15 p-3 rounded-xl">
+                  <Check className="h-4 w-4 shrink-0 mt-0.5" />
+                  <div className="flex flex-col gap-1">
+                    <span className="font-bold">Swap Submitted!</span>
+                    <a
+                      href={`https://basescan.org/tx/${txHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 underline hover:text-green-300"
+                    >
+                      View on Basescan <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="mt-4">
+                {!isConnected ? (
+                  <button
+                    onClick={() => setShowConnectModal(true)}
+                    className="w-full bg-[#01C38E] hover:bg-[#00ab7c] text-white font-bold py-4 rounded-2xl transition-all text-sm flex items-center justify-center gap-2 shadow-lg shadow-[#01C38E]/30 active:scale-[0.98]"
+                  >
+                    <Wallet className="h-4 w-4" />
+                    Connect Wallet
+                  </button>
+                ) : chain?.id !== 8453 ? (
+                  <button
+                    onClick={() => switchChain({ chainId: 8453 })}
+                    className="w-full bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-4 rounded-2xl transition-all text-sm shadow-lg shadow-yellow-600/30 active:scale-[0.98]"
+                  >
+                    Switch Network to Base
+                  </button>
+                ) : !amount || Number(amount) <= 0 ? (
                   <button disabled className="w-full bg-white/5 border border-white/10 text-zinc-500 font-bold py-4 rounded-2xl cursor-not-allowed text-sm">
                     Enter an amount
                   </button>
@@ -1353,9 +1227,420 @@ export default function Home() {
                   >
                     {isSwapping ? <><Loader2 className="h-4 w-4 animate-spin" /> Swapping...</> : "Swap"}
                   </button>
-                )
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* Pools Landing Dashboard */
+          <div className="w-full max-w-5xl flex flex-col gap-8 py-2">
+            {/* Hero Banner */}
+            <div className="text-center flex flex-col items-center gap-2 max-w-2xl mx-auto">
+              <h1 className="text-4xl sm:text-5xl font-black text-white tracking-tight">
+                Provide Liquidity
+              </h1>
+              <h2 className="text-3xl sm:text-4xl font-extrabold bg-gradient-to-r from-[#01C38E] via-[#0A786A] to-[#01C38E] bg-clip-text text-transparent">
+                Earn Passive Income
+              </h2>
+              <p className="text-zinc-400 text-sm sm:text-base mt-1">
+                Earn <span className="text-[#01C38E] font-semibold">0.04% fees</span> on every swap. StableSwap curve minimizes impermanent loss.
+              </p>
+            </div>
+
+            {/* 4 Stat Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Stat 1: Total Value Locked */}
+              <div className="bg-[#0f172a]/90 border border-white/[0.08] rounded-2xl p-5 backdrop-blur-xl relative overflow-hidden group hover:border-[#01C38E]/30 transition-all">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2 rounded-xl bg-[#01C38E]/10 text-[#01C38E]">
+                    <TrendingUp className="h-5 w-5" />
+                  </div>
+                  <span className="text-xs font-semibold text-zinc-400">Total Value Locked</span>
+                </div>
+                <div className="text-2xl font-black text-white">$9,105,683.46</div>
+                <div className="flex gap-1 items-end h-4 mt-3 opacity-60">
+                  <div className="bg-[#01C38E] w-full h-[40%] rounded-t-sm" />
+                  <div className="bg-[#01C38E] w-full h-[65%] rounded-t-sm" />
+                  <div className="bg-[#01C38E] w-full h-[50%] rounded-t-sm" />
+                  <div className="bg-[#01C38E] w-full h-[80%] rounded-t-sm" />
+                  <div className="bg-[#01C38E] w-full h-[100%] rounded-t-sm" />
+                </div>
+              </div>
+
+              {/* Stat 2: 24h Volume */}
+              <div className="bg-[#0f172a]/90 border border-white/[0.08] rounded-2xl p-5 backdrop-blur-xl group hover:border-[#01C38E]/30 transition-all">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2 rounded-xl bg-[#01C38E]/10 text-[#01C38E]">
+                    <BarChart3 className="h-5 w-5" />
+                  </div>
+                  <span className="text-xs font-semibold text-zinc-400">24h Volume (Est.)</span>
+                </div>
+                <div className="text-2xl font-black text-white">$455,284.17</div>
+                <span className="text-[11px] text-zinc-500 font-medium block mt-1">-5% daily turnover</span>
+              </div>
+
+              {/* Stat 3: Your LP Positions */}
+              <div className="bg-[#0f172a]/90 border border-white/[0.08] rounded-2xl p-5 backdrop-blur-xl group hover:border-[#01C38E]/30 transition-all">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2 rounded-xl bg-[#01C38E]/10 text-[#01C38E]">
+                    <Layers className="h-5 w-5" />
+                  </div>
+                  <span className="text-xs font-semibold text-zinc-400">Your LP Positions</span>
+                </div>
+                <div className="text-2xl font-black text-white">
+                  {isConnected ? lpPositionsCount : "0"}
+                </div>
+                <span className="text-[11px] text-zinc-500 block mt-1">Active pool positions</span>
+              </div>
+
+              {/* Stat 4: Active Pools */}
+              <div className="bg-[#0f172a]/90 border border-white/[0.08] rounded-2xl p-5 backdrop-blur-xl group hover:border-[#01C38E]/30 transition-all">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2 rounded-xl bg-orange-500/10 text-orange-400">
+                    <Zap className="h-5 w-5" />
+                  </div>
+                  <span className="text-xs font-semibold text-zinc-400">Active Pools</span>
+                </div>
+                <div className="text-2xl font-black text-white">3</div>
+                <span className="text-[11px] text-zinc-500 block mt-1">Base Mainnet</span>
+              </div>
+            </div>
+
+            {/* All Pools Table */}
+            <div className="bg-[#0f172a]/90 border border-white/[0.08] rounded-3xl p-6 backdrop-blur-xl shadow-2xl overflow-hidden">
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="text-lg font-extrabold text-white">All Pools</h3>
+                <span className="text-xs text-zinc-400">Base Mainnet Aerodrome Pools</span>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm border-collapse">
+                  <thead>
+                    <tr className="border-b border-white/5 text-xs text-zinc-400 font-semibold uppercase tracking-wider">
+                      <th className="pb-3 px-3">Pool</th>
+                      <th className="pb-3 px-3">TVL</th>
+                      <th className="pb-3 px-3">24h Fees (Est.)</th>
+                      <th className="pb-3 px-3">Your LP</th>
+                      <th className="pb-3 px-3">Your Share</th>
+                      <th className="pb-3 px-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {POOLS_LIST.map((pool) => (
+                      <tr key={pool.id} className="hover:bg-white/[0.02] transition-colors">
+                        {/* Pair Info */}
+                        <td className="py-4 px-3">
+                          <div className="flex items-center gap-3">
+                            <div className="flex -space-x-2">
+                              {pool.tokenA.image && <img src={pool.tokenA.image} className="w-7 h-7 rounded-full border-2 border-[#0f172a]" />}
+                              {pool.tokenB.image && <img src={pool.tokenB.image} className="w-7 h-7 rounded-full border-2 border-[#0f172a]" />}
+                            </div>
+                            <div>
+                              <div className="font-bold text-white flex items-center gap-2">
+                                {pool.name}
+                              </div>
+                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-zinc-400">
+                                {pool.type}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* TVL */}
+                        <td className="py-4 px-3 font-bold text-white">{pool.tvl}</td>
+
+                        {/* 24h Fees */}
+                        <td className="py-4 px-3 font-semibold text-[#01C38E]">{pool.fees24h}</td>
+
+                        {/* Your LP */}
+                        <td className="py-4 px-3 font-bold text-white">
+                          {isConnected ? pool.userLpFormatted : "0.0000 LP"}
+                        </td>
+
+                        {/* Your Share */}
+                        <td className="py-4 px-3 font-semibold text-zinc-400">
+                          {isConnected ? pool.userShareFormatted : "0.00%"}
+                        </td>
+
+                        {/* Actions */}
+                        <td className="py-4 px-3 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => {
+                                setPoolTokenA(pool.tokenA);
+                                setPoolTokenB(pool.tokenB);
+                                setLiquidityMode("add");
+                                setError("");
+                                setTxHash("");
+                                setShowPoolModal(true);
+                              }}
+                              className="bg-[#01C38E] hover:bg-[#00ab7c] text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-md shadow-[#01C38E]/20 active:scale-95"
+                            >
+                              + Add
+                            </button>
+                            <button
+                              onClick={() => {
+                                setPoolTokenA(pool.tokenA);
+                                setPoolTokenB(pool.tokenB);
+                                setLiquidityMode("remove");
+                                setError("");
+                                setTxHash("");
+                                setShowPoolModal(true);
+                              }}
+                              className="bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-300 hover:text-white text-xs font-bold px-4 py-2 rounded-xl transition-all active:scale-95"
+                            >
+                              - Remove
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* Deposit / Remove Liquidity Modal */}
+      {showPoolModal && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setShowPoolModal(false)} />
+          <div className="relative bg-[#0f172a] border border-white/10 rounded-3xl shadow-2xl w-full max-w-[460px] p-6 z-10">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="flex -space-x-2">
+                  {poolTokenA.image && <img src={poolTokenA.image} className="w-6 h-6 rounded-full border border-black" />}
+                  {poolTokenB.image && <img src={poolTokenB.image} className="w-6 h-6 rounded-full border border-black" />}
+                </div>
+                <span className="font-extrabold text-lg text-white">{poolTokenA.symbol} / {poolTokenB.symbol} Pool</span>
+              </div>
+              <button onClick={() => setShowPoolModal(false)} className="p-1 text-zinc-400 hover:text-white hover:bg-white/10 rounded-xl transition-all">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Sub-Toggle Mode */}
+            <div className="flex bg-black/40 p-1 rounded-xl mb-4 border border-white/5">
+              <button
+                onClick={() => { setLiquidityMode("add"); setError(""); setTxHash(""); }}
+                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                  liquidityMode === "add" ? "bg-[#01C38E] text-white shadow-md shadow-[#01C38E]/20" : "text-zinc-400 hover:text-white"
+                }`}
+              >
+                + Deposit Liquidity
+              </button>
+              <button
+                onClick={() => { setLiquidityMode("remove"); setError(""); setTxHash(""); }}
+                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                  liquidityMode === "remove" ? "bg-red-500/80 text-white shadow-md shadow-red-500/20" : "text-zinc-400 hover:text-white"
+                }`}
+              >
+                - Remove Liquidity
+              </button>
+            </div>
+
+            {liquidityMode === "add" ? (
+              <>
+                {/* Deposit Token A */}
+                <div className="bg-black/30 border border-white/[0.04] rounded-2xl p-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-xs text-zinc-500 font-medium">Deposit {poolTokenA.symbol}</label>
+                    {isConnected && balanceDataA && (
+                      <div className="flex items-center gap-1.5 text-[11px] text-zinc-500">
+                        <span>
+                          Balance: {parseFloat(balanceDataA.formatted || "0").toLocaleString(undefined, { maximumFractionDigits: 6 })}
+                        </span>
+                        <button
+                          onClick={handleMaxPoolA}
+                          className="text-[#01C38E] hover:text-[#00ab7c] font-black uppercase text-[10px] bg-[#01C38E]/10 hover:bg-[#01C38E]/20 px-1.5 py-0.5 rounded transition-all"
+                        >
+                          Max
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      placeholder="0"
+                      value={poolAmountA}
+                      onFocus={() => setActiveInput("A")}
+                      onChange={(e) => { setPoolAmountA(e.target.value); setError(""); setTxHash(""); }}
+                      className="bg-transparent text-[24px] font-bold text-white outline-none w-full placeholder-zinc-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                    <div className="relative" ref={poolADDRef}>
+                      <button
+                        onClick={() => { setShowPoolADD(!showPoolADD); setShowPoolBDD(false); }}
+                        className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 pl-2 pr-2.5 py-1.5 rounded-full transition-colors shrink-0"
+                      >
+                        {poolTokenA.image && <img src={poolTokenA.image} alt="" className="w-5 h-5 rounded-full" />}
+                        <span className="font-bold text-sm">{poolTokenA.symbol}</span>
+                        <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />
+                      </button>
+                      {showPoolADD && (
+                        <div className="absolute right-0 mt-2 w-44 bg-[#0c1222] border border-white/10 rounded-2xl shadow-xl z-50 overflow-hidden py-1">
+                          {SUPPORTED_TOKENS.map((t) => (
+                            <button key={`pa-${t.symbol}`} onClick={() => selectPoolA(t)}
+                              className="flex items-center gap-2.5 w-full px-3 py-2.5 hover:bg-white/5 text-left text-sm">
+                              {t.image && <img src={t.image} alt="" className="w-5 h-5 rounded-full" />}
+                              <span className="font-semibold">{t.symbol}</span>
+                              {t.symbol === poolTokenA.symbol && <Check className="h-3.5 w-3.5 text-[#01C38E] ml-auto" />}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Plus Icon */}
+                <div className="flex justify-center -my-3 relative z-10">
+                  <div className="w-9 h-9 rounded-full bg-[#13141c] border-[3px] border-[#0f172a] flex items-center justify-center">
+                    <span className="text-zinc-400 font-extrabold text-sm">+</span>
+                  </div>
+                </div>
+
+                {/* Deposit Token B */}
+                <div className="bg-black/30 border border-white/[0.04] rounded-2xl p-4 mt-1">
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-xs text-zinc-500 font-medium">Deposit {poolTokenB.symbol}</label>
+                    {isConnected && balanceDataB && (
+                      <div className="flex items-center gap-1.5 text-[11px] text-zinc-500">
+                        <span>
+                          Balance: {parseFloat(balanceDataB.formatted || "0").toLocaleString(undefined, { maximumFractionDigits: 6 })}
+                        </span>
+                        <button
+                          onClick={handleMaxPoolB}
+                          className="text-[#01C38E] hover:text-[#00ab7c] font-black uppercase text-[10px] bg-[#01C38E]/10 hover:bg-[#01C38E]/20 px-1.5 py-0.5 rounded transition-all"
+                        >
+                          Max
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      placeholder="0"
+                      value={poolAmountB}
+                      onFocus={() => setActiveInput("B")}
+                      onChange={(e) => { setPoolAmountB(e.target.value); setError(""); setTxHash(""); }}
+                      className="bg-transparent text-[24px] font-bold text-white outline-none w-full placeholder-zinc-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                    <div className="relative" ref={poolBDDRef}>
+                      <button
+                        onClick={() => { setShowPoolBDD(!showPoolBDD); setShowPoolADD(false); }}
+                        className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 pl-2 pr-2.5 py-1.5 rounded-full transition-colors shrink-0"
+                      >
+                        {poolTokenB.image && <img src={poolTokenB.image} alt="" className="w-5 h-5 rounded-full" />}
+                        <span className="font-bold text-sm">{poolTokenB.symbol}</span>
+                        <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />
+                      </button>
+                      {showPoolBDD && (
+                        <div className="absolute right-0 mt-2 w-44 bg-[#0c1222] border border-white/10 rounded-2xl shadow-xl z-50 overflow-hidden py-1">
+                          {SUPPORTED_TOKENS.map((t) => (
+                            <button key={`pb-${t.symbol}`} onClick={() => selectPoolB(t)}
+                              className="flex items-center gap-2.5 w-full px-3 py-2.5 hover:bg-white/5 text-left text-sm">
+                              {t.image && <img src={t.image} alt="" className="w-5 h-5 rounded-full" />}
+                              <span className="font-semibold">{t.symbol}</span>
+                              {t.symbol === poolTokenB.symbol && <Check className="h-3.5 w-3.5 text-[#01C38E] ml-auto" />}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              /* Remove Liquidity Form */
+              <div className="bg-black/30 border border-white/[0.04] rounded-2xl p-4">
+                <div className="flex justify-between items-center mb-3">
+                  <label className="text-xs text-zinc-400 font-medium">Pool LP Balance</label>
+                  {isConnected && lpBalanceData !== undefined && (
+                    <div className="text-[11px] text-zinc-400">
+                      Your Balance: <span className="font-bold text-[#01C38E]">{parseFloat(fmtAmt(lpBalanceData as bigint, 18)).toFixed(6)} LP</span>
+                    </div>
+                  )}
+                </div>
+
+                <label className="text-xs text-zinc-500 font-medium mb-1 block">LP Tokens to Withdraw</label>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  placeholder="0.0"
+                  value={removeLpAmount}
+                  onChange={(e) => { setRemoveLpAmount(e.target.value); setError(""); setTxHash(""); }}
+                  className="bg-transparent text-[24px] font-bold text-white outline-none w-full placeholder-zinc-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none mb-3"
+                />
+
+                {/* Percentage Shortcuts */}
+                <div className="grid grid-cols-4 gap-2">
+                  {[25, 50, 75, 100].map((pct) => (
+                    <button
+                      key={pct}
+                      onClick={() => {
+                        if (!lpBalanceData) return;
+                        const val = (lpBalanceData as bigint * BigInt(pct)) / 100n;
+                        setRemoveLpAmount(fmtAmt(val, 18));
+                      }}
+                      className="bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold py-1.5 rounded-lg transition-all text-zinc-300 hover:text-white"
+                    >
+                      {pct === 100 ? "MAX" : `${pct}%`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Error */}
+            {error && (
+              <div className="mt-3 flex items-start gap-2 text-xs text-red-400 bg-red-500/10 border border-red-500/15 p-3 rounded-xl">
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                <span className="break-words">{error.length > 200 ? error.slice(0, 200) + "..." : error}</span>
+              </div>
+            )}
+
+            {/* Success */}
+            {txHash && (
+              <div className="mt-3 flex items-start gap-2 text-xs text-green-400 bg-green-500/10 border border-green-500/15 p-3 rounded-xl">
+                <Check className="h-4 w-4 shrink-0 mt-0.5" />
+                <div className="flex flex-col gap-1">
+                  <span className="font-bold">Transaction Submitted!</span>
+                  <a
+                    href={`https://basescan.org/tx/${txHash}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 underline hover:text-green-300"
+                  >
+                    View on Basescan <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+              </div>
+            )}
+
+            {/* Modal Action Buttons */}
+            <div className="mt-4">
+              {!isConnected ? (
+                <button
+                  onClick={() => setShowConnectModal(true)}
+                  className="w-full bg-[#01C38E] hover:bg-[#00ab7c] text-white font-bold py-4 rounded-2xl transition-all text-sm flex items-center justify-center gap-2 shadow-lg shadow-[#01C38E]/30 active:scale-[0.98]"
+                >
+                  <Wallet className="h-4 w-4" />
+                  Connect Wallet
+                </button>
+              ) : chain?.id !== 8453 ? (
+                <button
+                  onClick={() => switchChain({ chainId: 8453 })}
+                  className="w-full bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-4 rounded-2xl transition-all text-sm shadow-lg shadow-yellow-600/30 active:scale-[0.98]"
+                >
+                  Switch Network to Base
+                </button>
               ) : liquidityMode === "add" ? (
-                // Liquidity Actions (Add)
                 !poolAmountA || Number(poolAmountA) <= 0 || !poolAmountB || Number(poolAmountB) <= 0 ? (
                   <button disabled className="w-full bg-white/5 border border-white/10 text-zinc-500 font-bold py-4 rounded-2xl cursor-not-allowed text-sm">
                     Enter amounts
@@ -1386,7 +1671,6 @@ export default function Home() {
                   </button>
                 )
               ) : (
-                // Liquidity Actions (Remove)
                 !removeLpAmount || Number(removeLpAmount) <= 0 ? (
                   <button disabled className="w-full bg-white/5 border border-white/10 text-zinc-500 font-bold py-4 rounded-2xl cursor-not-allowed text-sm">
                     Enter LP amount
@@ -1411,9 +1695,8 @@ export default function Home() {
               )}
             </div>
           </div>
-
         </div>
-      </main>
+      )}
 
       {/* Footer */}
       <footer className="border-t border-white/5 py-5 bg-black/30">
