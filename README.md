@@ -1,92 +1,167 @@
-# ☀️ GM DEX — Decentralized Exchange & Liquidity Protocol on Base
+<div align="center">
 
-> High-performance DEX, Liquidity Pools, and Cross-Chain Asset Bridge built on **Base Mainnet**, powered by Aerodrome V2 liquidity routing, automated protocol fee collection, and Base Builder Code attribution.
+# ☀️ GM DEX
+### High-Performance Decentralized Exchange & Liquidity Protocol on Base Mainnet
 
----
+![Base Mainnet](https://img.shields.io/badge/Network-Base_Mainnet_(8453)-blue?style=for-the-badge&logo=coinbase)
+![Next.js 16](https://img.shields.io/badge/Next.js-16_Turbopack-black?style=for-the-badge&logo=next.js)
+![Wagmi v2](https://img.shields.io/badge/Wagmi-v2.19-green?style=for-the-badge)
+![Aerodrome V2](https://img.shields.io/badge/Routing-Aerodrome_V2-cyan?style=for-the-badge)
+![License](https://img.shields.io/badge/License-MIT-purple?style=for-the-badge)
 
-## 🌟 Key Features
+<p align="center">
+  <b>Swap Any Token</b> • <b>Provide Liquidity & Earn Fees</b> • <b>Multi-Chain Asset Bridge</b>
+</p>
 
-- 🔄 **Token Swap Landing Dashboard** — Swap ETH, USDC, EURC, and more with zero slippage loss, sub-second finality, and 0.1% protocol fee collection directly to Treasury.
-- 💧 **XyloNet Pools Landing Page** — Provide liquidity to Aerodrome pools (`USDC/EURC`, `ETH/USDC`, `ETH/EURC`) with real-time LP position tracking, pool share percentage calculation, and automated deposit fee collection.
-- 🌉 **Multi-Chain Asset Bridge** — Integrated LI.FI / Jumper cross-chain bridge supporting 15+ EVM chains & Solana to Base Mainnet, with a 0.1% protocol fee routed to Treasury.
-- ⚡ **Ultra-Fast Balance Polling** — 2-second background auto-refetching for wallet balances, token allowances, and LP token holdings.
-- 🏷️ **Base Builder Code Attribution** — ERC-8021 standard transaction data suffix (`6a488e6c2876ee6c1138a856`) appended to all swaps and liquidity deposits for Coinbase Builder Rewards.
-- 🎨 **XyloNet Aesthetic** — Slate blue (`#0f172a`), mint green (`#01C38E`), and deep teal (`#0A786A`) glassmorphism dark theme.
-
----
-
-## 📜 Deployed Smart Contracts (Base Mainnet - Chain ID: 8453)
-
-| Contract / Address | Type | Role & Description |
-| :--- | :--- | :--- |
-| **`0x9dc3BBdB8817309ba42b79cc357EC6Be47030B70`** | `GMDexRouter` | **Swap Fee Router** — Collects 0.1% swap fee to Treasury and routes remaining swap to Aerodrome Router. |
-| **`0x379bB6CBd151c8A9C3da6e534E46356e17b14572`** | `AeroDexLiquidity` | **Liquidity Deposit Fee Router** — Collects deposit fee to Treasury and deposits liquidity into Aerodrome pools. |
-| **`0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43`** | `AeroRouter` | **Aerodrome V2 Router** — Used for price quote queries, reserve ratios, and LP token withdrawals. |
-| **`0x420DD381b31aEf6683db6B902084cB0FFECe40Da`** | `AeroFactory` | **Aerodrome Pool Factory** — Returns LP token addresses for pool reserve queries and balance tracking. |
-| **`0xAa81a036Bf5a2823dAA2Aadbcc66140fAb29CcE9`** | `Treasury` | **Protocol Treasury Wallet** — Receives all collected swap fees, deposit fees, and bridge fee shares. |
+</div>
 
 ---
 
-## 🏛️ System Architecture & Data Flow
+## 📌 Executive Summary
+
+**GM DEX** is a next-generation decentralized exchange built natively on **Base Mainnet**. Designed with a modern slate-blue and mint-green glassmorphism aesthetic (**XyloNet Theme**), GM DEX combines direct **Aerodrome V2 liquidity routing**, automated protocol fee collection to Treasury, real-time LP position tracking, and standard **Base Builder Code attribution** (`6a488e6c2876ee6c1138a856`).
+
+---
+
+## 🌟 Core Features
+
+### 🔄 1. High-Execution Token Swaps
+- **Best Execution**: Direct integration with Aerodrome V2 Router (`0xcF77a...`) for optimal routing across Volatile (vAMM) and Stable (sAMM) pools.
+- **Protocol Fee Collection**: Dedicated `GMDexRouter` smart contract collects a 0.1% swap fee directly to the Protocol Treasury.
+- **Zero-Delay Quotes**: Real-time price estimation with minimum slippage guards.
+
+### 💧 2. XyloNet Pools & Liquidity Dashboard
+- **All-in-One Dashboard**: Live stats for Total Value Locked (TVL), 24h Volume, and Active Pools.
+- **Real-Time LP Tracking**: Automatically queries Aerodrome Pool Factory (`0x420D...`) for connected wallet LP token balances and pool share percentages every 2 seconds.
+- **Fee-Collecting Deposits**: Deposits are processed through `AeroDexLiquidity`, collecting deposit fees straight to Treasury before pooling.
+- **Dynamic Liquidity Calculations**: Instant paired-token ratio matching for MAX deposits and single-click LP withdrawals.
+
+### 🌉 3. Fee-Earning Multi-Chain Bridge
+- **15+ Chain Connectivity**: Embedded LI.FI / Jumper cross-chain bridge supporting transfers from Ethereum Mainnet, Arbitrum, Polygon, Optimism, and Solana directly to Base Mainnet.
+- **Automatic 0.1% Treasury Revenue**: Pre-configured with custom integrator fees that automatically pay 0.1% of every cross-chain transfer into the Protocol Treasury (`0xAa81a...`).
+
+### 🏷️ 4. Base Builder Code Attribution
+- **ERC-8021 Suffix**: Appends standard Base Builder Code (`6a488e6c2876ee6c1138a856`) to swap and liquidity transaction payloads, ensuring maximum ecosystem builder rewards from Coinbase/Base.
+
+---
+
+## 📜 Smart Contract Architecture (Base Mainnet - Chain ID: 8453)
+
+| Contract Name | Address | Network | Description & Role |
+| :--- | :--- | :--- | :--- |
+| 🛡️ **`GMDexRouter`** | [`0x9dc3BBdB8817309ba42b79cc357EC6Be47030B70`](https://basescan.org/address/0x9dc3BBdB8817309ba42b79cc357EC6Be47030B70) | Base Mainnet | **Swap Fee Router** — Collects 0.1% swap fee to Treasury and executes swap via Aerodrome Router. |
+| 💧 **`AeroDexLiquidity`** | [`0x379bB6CBd151c8A9C3da6e534E46356e17b14572`](https://basescan.org/address/0x379bB6CBd151c8A9C3da6e534E46356e17b14572) | Base Mainnet | **Liquidity Fee Router** — Collects deposit fee to Treasury and deposits remaining liquidity into Aerodrome pools. |
+| 🔄 **`AeroRouter`** | [`0xcF77aBa9A5CA399B7c97c74d54e5b1Beb874E43`](https://basescan.org/address/0xcF77aBa9A5CA399B7c97c74d54e5b1Beb874E43) | Base Mainnet | **Aerodrome V2 Router** — Handles price quote queries, reserve ratio calculations, and LP withdrawals. |
+| 🏭 **`AeroFactory`** | [`0x420DD381b31aEf6683db6B902084cB0FFECe40Da`](https://basescan.org/address/0x420DD381b31aEf6683db6B902084cB0FFECe40Da) | Base Mainnet | **Aerodrome Pool Factory** — Fetches LP pool addresses for balance tracking and reserve queries. |
+| 🏛️ **`Treasury`** | [`0xAa81a036Bf5a2823dAA2Aadbcc66140fAb29CcE9`](https://basescan.org/address/0xAa81a036Bf5a2823dAA2Aadbcc66140fAb29CcE9) | Base Mainnet | **Protocol Treasury Wallet** — Receives all swap fees, deposit fees, and bridge fee payouts. |
+
+---
+
+## 🏛️ System Architecture Diagram
 
 ```mermaid
-graph TD
-    User[User Wallet] -->|Swap Request| SwapRouter["GM_DEX_ROUTER (0x9dc3...)"]
-    User -->|Add Liquidity| LiqRouter["AeroDexLiquidity (0x379b...)"]
-    User -->|Remove Liquidity| AeroRouter["Aerodrome Router (0xcF77...)"]
-    User -->|Cross-Chain Bridge| BridgeWidget["LI.FI Bridge (Jumper)"]
+graph TB
+    subgraph Client Layer
+        UI["GM DEX Web App (Next.js 16)"]
+        Wagmi["Wagmi v2 / Viem Client"]
+    end
 
-    SwapRouter -->|0.1% Fee| Treasury["Treasury (0xAa81a...)"]
-    SwapRouter -->|Execute Swap| AeroRouter
-    LiqRouter -->|Deposit Fee| Treasury
-    LiqRouter -->|Add Liquidity| AeroRouter
-    BridgeWidget -->|0.1% Bridge Share| Treasury
+    subgraph Smart Contracts on Base Mainnet
+        SwapContract["GMDexRouter (0x9dc3...)"]
+        LiqContract["AeroDexLiquidity (0x379b...)"]
+        AeroRouter["Aerodrome Router (0xcF77...)"]
+        AeroFactory["Aerodrome Factory (0x420D...)"]
+    end
 
-    SwapRouter -.->|Builder Code Suffix| BaseBuilder["Base Builder Code (6a488e6c...)"]
-    LiqRouter -.->|Builder Code Suffix| BaseBuilder
+    subgraph Protocol Revenue
+        Treasury["Treasury Wallet (0xAa81a...)"]
+        CoinbaseBuilder["Base Builder Rewards (6a488e6c...)"]
+    end
+
+    subgraph Cross-Chain Infrastructure
+        LI FI["LI.FI / Jumper Bridge Widget"]
+    end
+
+    UI --> Wagmi
+    Wagmi -->|Swap Token| SwapContract
+    Wagmi -->|Add Liquidity| LiqContract
+    Wagmi -->|Remove LP| AeroRouter
+    Wagmi -->|Bridge Assets| LI FI
+
+    SwapContract -->|0.1% Fee| Treasury
+    SwapContract -->|Route Swap| AeroRouter
+    LiqContract -->|Deposit Fee| Treasury
+    LiqRouter -->|Deposit Tokens| AeroRouter
+    LI FI -->|0.1% Fee Share| Treasury
+
+    SwapContract -.->|ERC-8021 Data Suffix| CoinbaseBuilder
+    LiqContract -.->|ERC-8021 Data Suffix| CoinbaseBuilder
 ```
+
+---
+
+## 🪙 Supported Tokens
+
+| Token Symbol | Token Name | Contract Address (Base) | Decimals |
+| :--- | :--- | :--- | :--- |
+| **ETH** | Native Ethereum | `0x0000000000000000000000000000000000000000` | 18 |
+| **WETH** | Wrapped Ether | `0x4200000000000000000000000000000000000006` | 18 |
+| **USDC** | USD Coin (Circle) | `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` | 6 |
+| **EURC** | Euro Coin (Circle) | `0x60a3E35Cc1051386f1Df2370ca6e1B4d7583626c` | 6 |
 
 ---
 
 ## 🛠️ Technology Stack
 
-- **Core Framework**: [Next.js 16](https://nextjs.org) (App Router, Turbopack)
-- **Web3 Libraries**: [Wagmi v2](https://wagmi.sh) + [Viem](https://viem.sh)
-- **Smart Contracts**: Solidity ^0.8.20, Hardhat, OpenZeppelin
-- **Liquidity & Routing**: Aerodrome V2 (Base Mainnet)
+- **Frontend**: Next.js 16 (App Router, Turbopack), React 19, TypeScript
+- **Web3 Ecosystem**: Wagmi 2.19, Viem 2.54, Coinbase OnchainKit
+- **Smart Contracts**: Solidity ^0.8.20, Hardhat, OpenZeppelin 5.x
+- **Liquidity Provider**: Aerodrome V2 (Base Mainnet)
 - **Cross-Chain Bridge**: LI.FI / Jumper Exchange Embed
-- **Styling**: Tailwind CSS v4 + Lucide React Icons
-- **Target Blockchain**: [Base Mainnet](https://base.org) (Chain ID: 8453)
+- **Styling & Design System**: Tailwind CSS v4, Lucide Icons, Glassmorphism UI
 
 ---
 
-## 🚀 Local Development Setup
+## 🚀 Getting Started
 
-### 1. Clone & Install Dependencies
+### Prerequisites
+- Node.js >= 18.x
+- npm >= 9.x
 
+### 1. Clone Repository
 ```bash
 git clone https://github.com/earnadvise/gm-dex.git
 cd gm-dex
+```
+
+### 2. Install Dependencies
+```bash
 npm install
 ```
 
-### 2. Configure Environment Variables (`.env.local`)
-
+### 3. Setup Environment Variables
+Create a `.env.local` file in the root directory:
 ```env
 NEXT_PUBLIC_RPC_URL=https://mainnet.base.org
 NEXT_PUBLIC_BUILDER_CODE=6a488e6c2876ee6c1138a856
 ```
 
-### 3. Run Development Server
-
+### 4. Run Development Server
 ```bash
 npm run dev
 ```
+Open [http://localhost:3000](http://localhost:3000) to view GM DEX in your browser.
 
-Open [http://localhost:3000](http://localhost:3000) to view the application locally.
+---
+
+## 🔒 Security & Quality Assurance
+
+- **Flattened Verification**: Contracts have been flattened and compiled with Solc 0.8.20 with standard zero-local-variable stack optimization for gas safety.
+- **Non-Custodial**: Users retain full control of their private keys and tokens at all times.
+- **Direct DEX Routing**: Swaps and liquidity deposits execute atomically on Base Mainnet via verified protocol smart contracts.
 
 ---
 
 ## 📄 License
 
-MIT
+Distributed under the MIT License. See `LICENSE` for details.
