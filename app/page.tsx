@@ -221,6 +221,44 @@ const ROUTER_ABI = [
     stateMutability: "nonpayable",
     type: "function",
   },
+  {
+    inputs: [
+      { name: "tokenA", type: "address" },
+      { name: "tokenB", type: "address" },
+      { name: "amountADesired", type: "uint256" },
+      { name: "amountBDesired", type: "uint256" },
+      { name: "amountAMin", type: "uint256" },
+      { name: "amountBMin", type: "uint256" },
+      { name: "to", type: "address" },
+      { name: "deadline", type: "uint256" },
+    ],
+    name: "addLiquidity",
+    outputs: [
+      { name: "amountA", type: "uint256" },
+      { name: "amountB", type: "uint256" },
+      { name: "liquidity", type: "uint256" },
+    ],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { name: "token", type: "address" },
+      { name: "amountTokenDesired", type: "uint256" },
+      { name: "amountTokenMin", type: "uint256" },
+      { name: "amountETHMin", type: "uint256" },
+      { name: "to", type: "address" },
+      { name: "deadline", type: "uint256" },
+    ],
+    name: "addLiquidityETH",
+    outputs: [
+      { name: "amountToken", type: "uint256" },
+      { name: "amountETH", type: "uint256" },
+      { name: "liquidity", type: "uint256" },
+    ],
+    stateMutability: "payable",
+    type: "function",
+  },
 ] as const;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -251,6 +289,9 @@ export default function Home() {
   const { address, isConnected, chain } = useAccount();
   const { switchChain } = useSwitchChain();
 
+  // Tabs: 'swap' or 'pool'
+  const [activeTab, setActiveTab] = useState<"swap" | "pool">("swap");
+
   // Swap state
   const [amount, setAmount] = useState("");
   const [inputToken, setInputToken] = useState(SUPPORTED_TOKENS[0]); // ETH
@@ -260,7 +301,15 @@ export default function Home() {
   const [error, setError] = useState("");
   const [txHash, setTxHash] = useState("");
 
-  // User Balance
+  // Pool state
+  const [poolAmountA, setPoolAmountA] = useState("");
+  const [poolAmountB, setPoolAmountB] = useState("");
+  const [poolTokenA, setPoolTokenA] = useState(SUPPORTED_TOKENS[0]); // ETH
+  const [poolTokenB, setPoolTokenB] = useState(SUPPORTED_TOKENS[1]); // USDC
+  const [showPoolADD, setShowPoolADD] = useState(false);
+  const [showPoolBDD, setShowPoolBDD] = useState(false);
+
+  // User Balance (Swap)
   const { data: balanceData } = useBalance({
     address: address,
     token: inputToken.address ? (inputToken.address as `0x${string}`) : undefined,
@@ -269,23 +318,58 @@ export default function Home() {
   const handleMax = () => {
     if (!balanceData) return;
     if (!inputToken.address) {
-      // Native ETH: reserve 0.005 ETH for gas
       const reserve = 5000000000000000n; // 0.005 ETH
       const maxVal = balanceData.value > reserve ? balanceData.value - reserve : 0n;
       setAmount(fmtAmt(maxVal, inputToken.decimals));
     } else {
-      // ERC20
       setAmount(fmtAmt(balanceData.value, inputToken.decimals));
+    }
+  };
+
+  // User Balances (Pool)
+  const { data: balanceDataA } = useBalance({
+    address: address,
+    token: poolTokenA.address ? (poolTokenA.address as `0x${string}`) : undefined,
+  });
+
+  const { data: balanceDataB } = useBalance({
+    address: address,
+    token: poolTokenB.address ? (poolTokenB.address as `0x${string}`) : undefined,
+  });
+
+  const handleMaxPoolA = () => {
+    if (!balanceDataA) return;
+    if (!poolTokenA.address) {
+      const reserve = 5000000000000000n;
+      const maxVal = balanceDataA.value > reserve ? balanceDataA.value - reserve : 0n;
+      setPoolAmountA(fmtAmt(maxVal, poolTokenA.decimals));
+    } else {
+      setPoolAmountA(fmtAmt(balanceDataA.value, poolTokenA.decimals));
+    }
+  };
+
+  const handleMaxPoolB = () => {
+    if (!balanceDataB) return;
+    if (!poolTokenB.address) {
+      const reserve = 5000000000000000n;
+      const maxVal = balanceDataB.value > reserve ? balanceDataB.value - reserve : 0n;
+      setPoolAmountB(fmtAmt(maxVal, poolTokenB.decimals));
+    } else {
+      setPoolAmountB(fmtAmt(balanceDataB.value, poolTokenB.decimals));
     }
   };
 
   // Close dropdowns on outside click
   const inputDDRef = useRef<HTMLDivElement>(null);
   const outputDDRef = useRef<HTMLDivElement>(null);
+  const poolADDRef = useRef<HTMLDivElement>(null);
+  const poolBDDRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (inputDDRef.current && !inputDDRef.current.contains(e.target as Node)) setShowInputDD(false);
       if (outputDDRef.current && !outputDDRef.current.contains(e.target as Node)) setShowOutputDD(false);
+      if (poolADDRef.current && !poolADDRef.current.contains(e.target as Node)) setShowPoolADD(false);
+      if (poolBDDRef.current && !poolBDDRef.current.contains(e.target as Node)) setShowPoolBDD(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -399,7 +483,144 @@ export default function Home() {
       setError(e?.shortMessage || e?.message || "Swap failed.");
     }
   };
+  // Pool calculations
+  const poolAmountAWei = parseAmt(poolAmountA, poolTokenA.decimals);
+  const poolAmountBWei = parseAmt(poolAmountB, poolTokenB.decimals);
 
+  // Allowance A
+  const { data: allowanceA, refetch: refetchAllowanceA } = useReadContract({
+    address: poolTokenA.address as `0x${string}`,
+    abi: ERC20_ABI,
+    functionName: "allowance",
+    args: address && poolTokenA.address ? [address, GM_DEX_ROUTER] : undefined,
+    query: { enabled: isConnected && !!address && !!poolTokenA.address },
+  });
+
+  // Allowance B
+  const { data: allowanceB, refetch: refetchAllowanceB } = useReadContract({
+    address: poolTokenB.address as `0x${string}`,
+    abi: ERC20_ABI,
+    functionName: "allowance",
+    args: address && poolTokenB.address ? [address, GM_DEX_ROUTER] : undefined,
+    query: { enabled: isConnected && !!address && !!poolTokenB.address },
+  });
+
+  const isApprovedA = !poolTokenA.address || (allowanceA !== undefined && allowanceA >= poolAmountAWei);
+  const isApprovedB = !poolTokenB.address || (allowanceB !== undefined && allowanceB >= poolAmountBWei);
+
+  const handleApproveA = async () => {
+    try {
+      setError("");
+      setTxHash("");
+      if (!address || !poolTokenA.address) return;
+      await approveToken({
+        address: poolTokenA.address as `0x${string}`,
+        abi: ERC20_ABI,
+        functionName: "approve",
+        args: [GM_DEX_ROUTER, poolAmountAWei],
+      });
+      setTimeout(() => refetchAllowanceA(), 3000);
+    } catch (e: any) {
+      setError(e?.shortMessage || e?.message || "Token A approval failed.");
+    }
+  };
+
+  const handleApproveB = async () => {
+    try {
+      setError("");
+      setTxHash("");
+      if (!address || !poolTokenB.address) return;
+      await approveToken({
+        address: poolTokenB.address as `0x${string}`,
+        abi: ERC20_ABI,
+        functionName: "approve",
+        args: [GM_DEX_ROUTER, poolAmountBWei],
+      });
+      setTimeout(() => refetchAllowanceB(), 3000);
+    } catch (e: any) {
+      setError(e?.shortMessage || e?.message || "Token B approval failed.");
+    }
+  };
+
+  const handleAddLiquidity = async () => {
+    try {
+      setError("");
+      setTxHash("");
+      if (!address) return;
+
+      const deadline = BigInt(Math.floor(Date.now() / 1000) + 1200);
+      const minA = poolAmountAWei * 95n / 100n; // 5% slippage
+      const minB = poolAmountBWei * 95n / 100n;
+
+      let rawData: Hex;
+      let value = 0n;
+
+      if (!poolTokenA.address) {
+        // ETH + Token B
+        rawData = encodeFunctionData({
+          abi: ROUTER_ABI,
+          functionName: "addLiquidityETH",
+          args: [poolTokenB.address as `0x${string}`, poolAmountBWei, minB, minA, address, deadline],
+        });
+        value = poolAmountAWei;
+      } else if (!poolTokenB.address) {
+        // Token A + ETH
+        rawData = encodeFunctionData({
+          abi: ROUTER_ABI,
+          functionName: "addLiquidityETH",
+          args: [poolTokenA.address as `0x${string}`, poolAmountAWei, minA, minB, address, deadline],
+        });
+        value = poolAmountBWei;
+      } else {
+        // Token A + Token B
+        rawData = encodeFunctionData({
+          abi: ROUTER_ABI,
+          functionName: "addLiquidity",
+          args: [
+            poolTokenA.address as `0x${string}`,
+            poolTokenB.address as `0x${string}`,
+            poolAmountAWei,
+            poolAmountBWei,
+            minA,
+            minB,
+            address,
+            deadline,
+          ],
+        });
+      }
+
+      // ✅ Append Builder Code for attribution tracking!
+      const dataWithBuilder = appendBuilderCode(rawData);
+
+      const tx = await sendSwap({
+        to: GM_DEX_ROUTER,
+        data: dataWithBuilder as Hex,
+        value,
+      });
+
+      setTxHash(tx);
+      setPoolAmountA("");
+      setPoolAmountB("");
+    } catch (e: any) {
+      setError(e?.shortMessage || e?.message || "Add Liquidity failed.");
+    }
+  };
+
+  const selectPoolA = (t: typeof SUPPORTED_TOKENS[0]) => {
+    setPoolTokenA(t);
+    setShowPoolADD(false);
+    setError("");
+    setTxHash("");
+    if (t.symbol === poolTokenB.symbol) setPoolTokenB(poolTokenA);
+  };
+
+  const selectPoolB = (t: typeof SUPPORTED_TOKENS[0]) => {
+    setPoolTokenB(t);
+    setShowPoolBDD(false);
+    setError("");
+    setTxHash("");
+    if (t.symbol === poolTokenA.symbol) setPoolTokenA(poolTokenB);
+  };
   const flipTokens = () => {
     setInputToken(outputToken);
     setOutputToken(inputToken);
@@ -457,110 +678,244 @@ export default function Home() {
       <main className="flex-1 flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-[440px] flex flex-col gap-5">
 
-          {/* Swap Card */}
+          {/* Swap / Pool Card */}
           <div className="bg-[#0c0d14]/80 border border-white/[0.06] rounded-3xl p-5 backdrop-blur-xl shadow-2xl">
-            <div className="flex items-center justify-between mb-5">
-              <h1 className="text-lg font-bold flex items-center gap-2">
-                <ArrowRightLeft className="h-5 w-5 text-[#0052ff]" />
-                Swap
-              </h1>
-            </div>
-
-            {/* Input */}
-            <div className="bg-black/30 border border-white/[0.04] rounded-2xl p-4">
-              <div className="flex justify-between items-center mb-2">
-                <label className="text-xs text-zinc-500 font-medium">You sell</label>
-                {isConnected && balanceData && (
-                  <div className="flex items-center gap-1.5 text-[11px] text-zinc-500">
-                    <span>
-                      Balance: {parseFloat(balanceData.formatted || "0").toLocaleString(undefined, {
-                        maximumFractionDigits: 6,
-                      })}
-                    </span>
-                    <button
-                      onClick={handleMax}
-                      className="text-[#0052ff] hover:text-[#0045d8] font-black uppercase text-[10px] bg-[#0052ff]/10 hover:bg-[#0052ff]/20 px-1.5 py-0.5 rounded transition-all"
-                    >
-                      Max
-                    </button>
-                  </div>
-                )}
-              </div>
-              <div className="flex items-center gap-3">
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  placeholder="0"
-                  value={amount}
-                  onChange={(e) => { setAmount(e.target.value); setError(""); setTxHash(""); }}
-                  className="bg-transparent text-[28px] font-bold text-white outline-none w-full placeholder-zinc-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                />
-                <div className="relative" ref={inputDDRef}>
-                  <button
-                    onClick={() => { setShowInputDD(!showInputDD); setShowOutputDD(false); }}
-                    className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 pl-2 pr-2.5 py-1.5 rounded-full transition-colors shrink-0"
-                  >
-                    {inputToken.image && <img src={inputToken.image} alt="" className="w-5 h-5 rounded-full" />}
-                    <span className="font-bold text-sm">{inputToken.symbol}</span>
-                    <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />
-                  </button>
-                  {showInputDD && (
-                    <div className="absolute right-0 mt-2 w-44 bg-[#0c0d12] border border-white/10 rounded-2xl shadow-xl z-50 overflow-hidden py-1">
-                      {SUPPORTED_TOKENS.map((t) => (
-                        <button key={`i-${t.symbol}`} onClick={() => selectInput(t)}
-                          className="flex items-center gap-2.5 w-full px-3 py-2.5 hover:bg-white/5 text-left text-sm">
-                          {t.image && <img src={t.image} alt="" className="w-5 h-5 rounded-full" />}
-                          <span className="font-semibold">{t.symbol}</span>
-                          {t.symbol === inputToken.symbol && <Check className="h-3.5 w-3.5 text-[#0052ff] ml-auto" />}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Flip */}
-            <div className="flex justify-center -my-3 relative z-10">
+            {/* Tabs */}
+            <div className="flex border-b border-white/5 mb-5">
               <button
-                onClick={flipTokens}
-                className="w-9 h-9 rounded-full bg-[#13141c] border-[3px] border-[#06070a] hover:bg-[#1a1b25] flex items-center justify-center transition-all active:scale-90"
+                onClick={() => { setActiveTab("swap"); setError(""); setTxHash(""); }}
+                className={`flex-1 pb-3 text-sm font-bold border-b-2 transition-all ${
+                  activeTab === "swap" ? "text-white border-[#0052ff]" : "text-zinc-500 border-transparent hover:text-zinc-300"
+                }`}
               >
-                <ArrowRightLeft className="h-3.5 w-3.5 text-zinc-400 rotate-90" />
+                Swap
+              </button>
+              <button
+                onClick={() => { setActiveTab("pool"); setError(""); setTxHash(""); }}
+                className={`flex-1 pb-3 text-sm font-bold border-b-2 transition-all ${
+                  activeTab === "pool" ? "text-white border-[#0052ff]" : "text-zinc-500 border-transparent hover:text-zinc-300"
+                }`}
+              >
+                Pool
               </button>
             </div>
 
-            {/* Output */}
-            <div className="bg-black/30 border border-white/[0.04] rounded-2xl p-4">
-              <label className="text-xs text-zinc-500 font-medium mb-2 block">You buy</label>
-              <div className="flex items-center gap-3">
-                <div className="text-[28px] font-bold text-white flex-1 min-h-[42px] flex items-center">
-                  {displayOut || <span className="text-zinc-700">0</span>}
-                </div>
-                <div className="relative" ref={outputDDRef}>
-                  <button
-                    onClick={() => { setShowOutputDD(!showOutputDD); setShowInputDD(false); }}
-                    className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 pl-2 pr-2.5 py-1.5 rounded-full transition-colors shrink-0"
-                  >
-                    {outputToken.image && <img src={outputToken.image} alt="" className="w-5 h-5 rounded-full" />}
-                    <span className="font-bold text-sm">{outputToken.symbol}</span>
-                    <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />
-                  </button>
-                  {showOutputDD && (
-                    <div className="absolute right-0 mt-2 w-44 bg-[#0c0d12] border border-white/10 rounded-2xl shadow-xl z-50 overflow-hidden py-1">
-                      {SUPPORTED_TOKENS.map((t) => (
-                        <button key={`o-${t.symbol}`} onClick={() => selectOutput(t)}
-                          className="flex items-center gap-2.5 w-full px-3 py-2.5 hover:bg-white/5 text-left text-sm">
-                          {t.image && <img src={t.image} alt="" className="w-5 h-5 rounded-full" />}
-                          <span className="font-semibold">{t.symbol}</span>
-                          {t.symbol === outputToken.symbol && <Check className="h-3.5 w-3.5 text-[#0052ff] ml-auto" />}
+            {activeTab === "swap" ? (
+              <>
+                {/* Input */}
+                <div className="bg-black/30 border border-white/[0.04] rounded-2xl p-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-xs text-zinc-500 font-medium">You sell</label>
+                    {isConnected && balanceData && (
+                      <div className="flex items-center gap-1.5 text-[11px] text-zinc-500">
+                        <span>
+                          Balance: {parseFloat(balanceData.formatted || "0").toLocaleString(undefined, {
+                            maximumFractionDigits: 6,
+                          })}
+                        </span>
+                        <button
+                          onClick={handleMax}
+                          className="text-[#0052ff] hover:text-[#0045d8] font-black uppercase text-[10px] bg-[#0052ff]/10 hover:bg-[#0052ff]/20 px-1.5 py-0.5 rounded transition-all"
+                        >
+                          Max
                         </button>
-                      ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      placeholder="0"
+                      value={amount}
+                      onChange={(e) => { setAmount(e.target.value); setError(""); setTxHash(""); }}
+                      className="bg-transparent text-[28px] font-bold text-white outline-none w-full placeholder-zinc-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                    <div className="relative" ref={inputDDRef}>
+                      <button
+                        onClick={() => { setShowInputDD(!showInputDD); setShowOutputDD(false); }}
+                        className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 pl-2 pr-2.5 py-1.5 rounded-full transition-colors shrink-0"
+                      >
+                        {inputToken.image && <img src={inputToken.image} alt="" className="w-5 h-5 rounded-full" />}
+                        <span className="font-bold text-sm">{inputToken.symbol}</span>
+                        <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />
+                      </button>
+                      {showInputDD && (
+                        <div className="absolute right-0 mt-2 w-44 bg-[#0c0d12] border border-white/10 rounded-2xl shadow-xl z-50 overflow-hidden py-1">
+                          {SUPPORTED_TOKENS.map((t) => (
+                            <button key={`i-${t.symbol}`} onClick={() => selectInput(t)}
+                              className="flex items-center gap-2.5 w-full px-3 py-2.5 hover:bg-white/5 text-left text-sm">
+                              {t.image && <img src={t.image} alt="" className="w-5 h-5 rounded-full" />}
+                              <span className="font-semibold">{t.symbol}</span>
+                              {t.symbol === inputToken.symbol && <Check className="h-3.5 w-3.5 text-[#0052ff] ml-auto" />}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
                 </div>
-              </div>
-            </div>
+
+                {/* Flip */}
+                <div className="flex justify-center -my-3 relative z-10">
+                  <button
+                    onClick={flipTokens}
+                    className="w-9 h-9 rounded-full bg-[#13141c] border-[3px] border-[#06070a] hover:bg-[#1a1b25] flex items-center justify-center transition-all active:scale-90"
+                  >
+                    <ArrowRightLeft className="h-3.5 w-3.5 text-zinc-400 rotate-90" />
+                  </button>
+                </div>
+
+                {/* Output */}
+                <div className="bg-black/30 border border-white/[0.04] rounded-2xl p-4 mt-1">
+                  <label className="text-xs text-zinc-500 font-medium mb-2 block">You buy</label>
+                  <div className="flex items-center gap-3">
+                    <div className="text-[28px] font-bold text-white flex-1 min-h-[42px] flex items-center">
+                      {displayOut || <span className="text-zinc-700">0</span>}
+                    </div>
+                    <div className="relative" ref={outputDDRef}>
+                      <button
+                        onClick={() => { setShowOutputDD(!showOutputDD); setShowInputDD(false); }}
+                        className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 pl-2 pr-2.5 py-1.5 rounded-full transition-colors shrink-0"
+                      >
+                        {outputToken.image && <img src={outputToken.image} alt="" className="w-5 h-5 rounded-full" />}
+                        <span className="font-bold text-sm">{outputToken.symbol}</span>
+                        <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />
+                      </button>
+                      {showOutputDD && (
+                        <div className="absolute right-0 mt-2 w-44 bg-[#0c0d12] border border-white/10 rounded-2xl shadow-xl z-50 overflow-hidden py-1">
+                          {SUPPORTED_TOKENS.map((t) => (
+                            <button key={`o-${t.symbol}`} onClick={() => selectOutput(t)}
+                              className="flex items-center gap-2.5 w-full px-3 py-2.5 hover:bg-white/5 text-left text-sm">
+                              {t.image && <img src={t.image} alt="" className="w-5 h-5 rounded-full" />}
+                              <span className="font-semibold">{t.symbol}</span>
+                              {t.symbol === outputToken.symbol && <Check className="h-3.5 w-3.5 text-[#0052ff] ml-auto" />}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Input A */}
+                <div className="bg-black/30 border border-white/[0.04] rounded-2xl p-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-xs text-zinc-500 font-medium">Deposit Token A</label>
+                    {isConnected && balanceDataA && (
+                      <div className="flex items-center gap-1.5 text-[11px] text-zinc-500">
+                        <span>
+                          Balance: {parseFloat(balanceDataA.formatted || "0").toLocaleString(undefined, {
+                            maximumFractionDigits: 6,
+                          })}
+                        </span>
+                        <button
+                          onClick={handleMaxPoolA}
+                          className="text-[#0052ff] hover:text-[#0045d8] font-black uppercase text-[10px] bg-[#0052ff]/10 hover:bg-[#0052ff]/20 px-1.5 py-0.5 rounded transition-all"
+                        >
+                          Max
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      placeholder="0"
+                      value={poolAmountA}
+                      onChange={(e) => { setPoolAmountA(e.target.value); setError(""); setTxHash(""); }}
+                      className="bg-transparent text-[28px] font-bold text-white outline-none w-full placeholder-zinc-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                    <div className="relative" ref={poolADDRef}>
+                      <button
+                        onClick={() => { setShowPoolADD(!showPoolADD); setShowPoolBDD(false); }}
+                        className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 pl-2 pr-2.5 py-1.5 rounded-full transition-colors shrink-0"
+                      >
+                        {poolTokenA.image && <img src={poolTokenA.image} alt="" className="w-5 h-5 rounded-full" />}
+                        <span className="font-bold text-sm">{poolTokenA.symbol}</span>
+                        <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />
+                      </button>
+                      {showPoolADD && (
+                        <div className="absolute right-0 mt-2 w-44 bg-[#0c0d12] border border-white/10 rounded-2xl shadow-xl z-50 overflow-hidden py-1">
+                          {SUPPORTED_TOKENS.map((t) => (
+                            <button key={`pa-${t.symbol}`} onClick={() => selectPoolA(t)}
+                              className="flex items-center gap-2.5 w-full px-3 py-2.5 hover:bg-white/5 text-left text-sm">
+                              {t.image && <img src={t.image} alt="" className="w-5 h-5 rounded-full" />}
+                              <span className="font-semibold">{t.symbol}</span>
+                              {t.symbol === poolTokenA.symbol && <Check className="h-3.5 w-3.5 text-[#0052ff] ml-auto" />}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Plus Icon */}
+                <div className="flex justify-center -my-3 relative z-10">
+                  <div className="w-9 h-9 rounded-full bg-[#13141c] border-[3px] border-[#06070a] flex items-center justify-center">
+                    <span className="text-zinc-400 font-extrabold text-sm">+</span>
+                  </div>
+                </div>
+
+                {/* Input B */}
+                <div className="bg-black/30 border border-white/[0.04] rounded-2xl p-4 mt-1">
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-xs text-zinc-500 font-medium">Deposit Token B</label>
+                    {isConnected && balanceDataB && (
+                      <div className="flex items-center gap-1.5 text-[11px] text-zinc-500">
+                        <span>
+                          Balance: {parseFloat(balanceDataB.formatted || "0").toLocaleString(undefined, {
+                            maximumFractionDigits: 6,
+                          })}
+                        </span>
+                        <button
+                          onClick={handleMaxPoolB}
+                          className="text-[#0052ff] hover:text-[#0045d8] font-black uppercase text-[10px] bg-[#0052ff]/10 hover:bg-[#0052ff]/20 px-1.5 py-0.5 rounded transition-all"
+                        >
+                          Max
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      placeholder="0"
+                      value={poolAmountB}
+                      onChange={(e) => { setPoolAmountB(e.target.value); setError(""); setTxHash(""); }}
+                      className="bg-transparent text-[28px] font-bold text-white outline-none w-full placeholder-zinc-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                    <div className="relative" ref={poolBDDRef}>
+                      <button
+                        onClick={() => { setShowPoolBDD(!showPoolBDD); setShowPoolADD(false); }}
+                        className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 pl-2 pr-2.5 py-1.5 rounded-full transition-colors shrink-0"
+                      >
+                        {poolTokenB.image && <img src={poolTokenB.image} alt="" className="w-5 h-5 rounded-full" />}
+                        <span className="font-bold text-sm">{poolTokenB.symbol}</span>
+                        <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />
+                      </button>
+                      {showPoolBDD && (
+                        <div className="absolute right-0 mt-2 w-44 bg-[#0c0d12] border border-white/10 rounded-2xl shadow-xl z-50 overflow-hidden py-1">
+                          {SUPPORTED_TOKENS.map((t) => (
+                            <button key={`pb-${t.symbol}`} onClick={() => selectPoolB(t)}
+                              className="flex items-center gap-2.5 w-full px-3 py-2.5 hover:bg-white/5 text-left text-sm">
+                              {t.image && <img src={t.image} alt="" className="w-5 h-5 rounded-full" />}
+                              <span className="font-semibold">{t.symbol}</span>
+                              {t.symbol === poolTokenB.symbol && <Check className="h-3.5 w-3.5 text-[#0052ff] ml-auto" />}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* Error */}
             {error && (
@@ -575,7 +930,7 @@ export default function Home() {
               <div className="mt-3 flex items-start gap-2 text-xs text-green-400 bg-green-500/10 border border-green-500/15 p-3 rounded-xl">
                 <Check className="h-4 w-4 shrink-0 mt-0.5" />
                 <div className="flex flex-col gap-1">
-                  <span className="font-bold">Swap Submitted!</span>
+                  <span className="font-bold">{activeTab === "swap" ? "Swap Submitted!" : "Liquidity Added!"}</span>
                   <a
                     href={`https://basescan.org/tx/${txHash}`}
                     target="_blank"
@@ -588,7 +943,7 @@ export default function Home() {
               </div>
             )}
 
-             {/* Action Button */}
+            {/* Action Buttons */}
             <div className="mt-4">
               {!isConnected ? (
                 <button
@@ -605,35 +960,69 @@ export default function Home() {
                 >
                   Switch Network to Base
                 </button>
-              ) : !amount || Number(amount) <= 0 ? (
-                <button disabled className="w-full bg-white/5 border border-white/10 text-zinc-500 font-bold py-4 rounded-2xl cursor-not-allowed text-sm">
-                  Enter an amount
-                </button>
-              ) : isQuoteLoading ? (
-                <button disabled className="w-full bg-white/5 border border-white/10 text-zinc-400 font-bold py-4 rounded-2xl cursor-not-allowed text-sm flex items-center justify-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />
-                  Fetching best price...
-                </button>
-              ) : outWei === 0n ? (
-                <button disabled className="w-full bg-white/5 border border-white/10 text-red-400 font-bold py-4 rounded-2xl cursor-not-allowed text-sm">
-                  Insufficient liquidity
-                </button>
-              ) : !isApproved ? (
-                <button
-                  onClick={handleApprove}
-                  disabled={isApproving}
-                  className="w-full bg-[#0052ff] hover:bg-[#0045d8] text-white font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-2 text-sm shadow-lg shadow-[#0052ff]/30 active:scale-[0.98] disabled:opacity-60"
-                >
-                  {isApproving ? <><Loader2 className="h-4 w-4 animate-spin" /> Approving...</> : `Approve ${inputToken.symbol}`}
-                </button>
+              ) : activeTab === "swap" ? (
+                // Swap Actions
+                !amount || Number(amount) <= 0 ? (
+                  <button disabled className="w-full bg-white/5 border border-white/10 text-zinc-500 font-bold py-4 rounded-2xl cursor-not-allowed text-sm">
+                    Enter an amount
+                  </button>
+                ) : isQuoteLoading ? (
+                  <button disabled className="w-full bg-white/5 border border-white/10 text-zinc-400 font-bold py-4 rounded-2xl cursor-not-allowed text-sm flex items-center justify-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />
+                    Fetching best price...
+                  </button>
+                ) : outWei === 0n ? (
+                  <button disabled className="w-full bg-white/5 border border-white/10 text-red-400 font-bold py-4 rounded-2xl cursor-not-allowed text-sm">
+                    Insufficient liquidity
+                  </button>
+                ) : !isApproved ? (
+                  <button
+                    onClick={handleApprove}
+                    disabled={isApproving}
+                    className="w-full bg-[#0052ff] hover:bg-[#0045d8] text-white font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-2 text-sm shadow-lg shadow-[#0052ff]/30 active:scale-[0.98] disabled:opacity-60"
+                  >
+                    {isApproving ? <><Loader2 className="h-4 w-4 animate-spin" /> Approving...</> : `Approve ${inputToken.symbol}`}
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleSwap}
+                    disabled={isSwapping}
+                    className="w-full bg-[#0052ff] hover:bg-[#0045d8] text-white font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-2 text-sm shadow-lg shadow-[#0052ff]/30 active:scale-[0.98] disabled:opacity-60"
+                  >
+                    {isSwapping ? <><Loader2 className="h-4 w-4 animate-spin" /> Swapping...</> : "Swap"}
+                  </button>
+                )
               ) : (
-                <button
-                  onClick={handleSwap}
-                  disabled={isSwapping}
-                  className="w-full bg-[#0052ff] hover:bg-[#0045d8] text-white font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-2 text-sm shadow-lg shadow-[#0052ff]/30 active:scale-[0.98] disabled:opacity-60"
-                >
-                  {isSwapping ? <><Loader2 className="h-4 w-4 animate-spin" /> Swapping...</> : "Swap"}
-                </button>
+                // Pool Actions
+                !poolAmountA || Number(poolAmountA) <= 0 || !poolAmountB || Number(poolAmountB) <= 0 ? (
+                  <button disabled className="w-full bg-white/5 border border-white/10 text-zinc-500 font-bold py-4 rounded-2xl cursor-not-allowed text-sm">
+                    Enter amounts
+                  </button>
+                ) : !isApprovedA ? (
+                  <button
+                    onClick={handleApproveA}
+                    disabled={isApproving}
+                    className="w-full bg-[#0052ff] hover:bg-[#0045d8] text-white font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-2 text-sm shadow-lg shadow-[#0052ff]/30 active:scale-[0.98] disabled:opacity-60"
+                  >
+                    {isApproving ? <><Loader2 className="h-4 w-4 animate-spin" /> Approving...</> : `Approve ${poolTokenA.symbol}`}
+                  </button>
+                ) : !isApprovedB ? (
+                  <button
+                    onClick={handleApproveB}
+                    disabled={isApproving}
+                    className="w-full bg-[#0052ff] hover:bg-[#0045d8] text-white font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-2 text-sm shadow-lg shadow-[#0052ff]/30 active:scale-[0.98] disabled:opacity-60"
+                  >
+                    {isApproving ? <><Loader2 className="h-4 w-4 animate-spin" /> Approving...</> : `Approve ${poolTokenB.symbol}`}
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleAddLiquidity}
+                    disabled={isSwapping}
+                    className="w-full bg-[#0052ff] hover:bg-[#0045d8] text-white font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-2 text-sm shadow-lg shadow-[#0052ff]/30 active:scale-[0.98] disabled:opacity-60"
+                  >
+                    {isSwapping ? <><Loader2 className="h-4 w-4 animate-spin" /> Depositing...</> : "Add Liquidity"}
+                  </button>
+                )
               )}
             </div>
           </div>
