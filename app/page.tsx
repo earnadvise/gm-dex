@@ -289,8 +289,8 @@ export default function Home() {
   const { address, isConnected, chain } = useAccount();
   const { switchChain } = useSwitchChain();
 
-  // Tabs: 'swap' or 'pool'
-  const [activeTab, setActiveTab] = useState<"swap" | "pool">("swap");
+  // Tabs: 'swap' or 'liquidity'
+  const [activeTab, setActiveTab] = useState<"swap" | "liquidity">("swap");
 
   // Swap state
   const [amount, setAmount] = useState("");
@@ -678,7 +678,7 @@ export default function Home() {
       <main className="flex-1 flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-[440px] flex flex-col gap-5">
 
-          {/* Swap / Pool Card */}
+          {/* Swap / Liquidity Card */}
           <div className="bg-[#0c0d14]/80 border border-white/[0.06] rounded-3xl p-5 backdrop-blur-xl shadow-2xl">
             {/* Tabs */}
             <div className="flex border-b border-white/5 mb-5">
@@ -691,12 +691,12 @@ export default function Home() {
                 Swap
               </button>
               <button
-                onClick={() => { setActiveTab("pool"); setError(""); setTxHash(""); }}
+                onClick={() => { setActiveTab("liquidity"); setError(""); setTxHash(""); }}
                 className={`flex-1 pb-3 text-sm font-bold border-b-2 transition-all ${
-                  activeTab === "pool" ? "text-white border-[#0052ff]" : "text-zinc-500 border-transparent hover:text-zinc-300"
+                  activeTab === "liquidity" ? "text-white border-[#0052ff]" : "text-zinc-500 border-transparent hover:text-zinc-300"
                 }`}
               >
-                Pool
+                Liquidity
               </button>
             </div>
 
@@ -993,7 +993,7 @@ export default function Home() {
                   </button>
                 )
               ) : (
-                // Pool Actions
+                // Liquidity Actions
                 !poolAmountA || Number(poolAmountA) <= 0 || !poolAmountB || Number(poolAmountB) <= 0 ? (
                   <button disabled className="w-full bg-white/5 border border-white/10 text-zinc-500 font-bold py-4 rounded-2xl cursor-not-allowed text-sm">
                     Enter amounts

@@ -11,10 +11,9 @@ export const wagmiConfig = createConfig({
     storage: cookieStorage,
   }),
   connectors: [
-    // Allow both Coinbase Smart Wallet AND EOA wallets
     coinbaseWallet({
       appName: "GM DEX",
-      preference: "all",
+      preference: "smartWalletOnly",
     }),
     // MetaMask
     metaMask({
