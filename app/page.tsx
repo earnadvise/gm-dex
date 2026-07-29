@@ -83,7 +83,50 @@ function WalletButton({ onConnectClick }: { onConnectClick: () => void }) {
 const WETH = "0x4200000000000000000000000000000000000006";
 const UNISWAP_V2_ROUTER = "0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24" as `0x${string}`;
 const GM_DEX_ROUTER = "0x9dc3BBdB8817309ba42b79cc357EC6Be47030B70" as `0x${string}`;
-const GM_DEX_LIQUIDITY = "0x9dc3BBdB8817309ba42b79cc357EC6Be47030B70" as `0x${string}`;
+const GM_DEX_LIQUIDITY = "0xcf77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43" as `0x${string}`;
+
+const AERO_ROUTER_ABI = [
+  {
+    inputs: [
+      { name: "tokenA", type: "address" },
+      { name: "tokenB", type: "address" },
+      { name: "stable", type: "bool" },
+      { name: "amountADesired", type: "uint256" },
+      { name: "amountBDesired", type: "uint256" },
+      { name: "amountAMin", type: "uint256" },
+      { name: "amountBMin", type: "uint256" },
+      { name: "to", type: "address" },
+      { name: "deadline", type: "uint256" },
+    ],
+    name: "addLiquidity",
+    outputs: [
+      { name: "amountA", type: "uint256" },
+      { name: "amountB", type: "uint256" },
+      { name: "liquidity", type: "uint256" },
+    ],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { name: "token", type: "address" },
+      { name: "stable", type: "bool" },
+      { name: "amountTokenDesired", type: "uint256" },
+      { name: "amountTokenMin", type: "uint256" },
+      { name: "amountETHMin", type: "uint256" },
+      { name: "to", type: "address" },
+      { name: "deadline", type: "uint256" },
+    ],
+    name: "addLiquidityETH",
+    outputs: [
+      { name: "amountToken", type: "uint256" },
+      { name: "amountETH", type: "uint256" },
+      { name: "liquidity", type: "uint256" },
+    ],
+    stateMutability: "payable",
+    type: "function",
+  },
+] as const;
 
 const ERC20_ABI = [
   {
@@ -506,33 +549,39 @@ export default function Home() {
       const minA = poolAmountAWei * 95n / 100n; // 5% slippage
       const minB = poolAmountBWei * 95n / 100n;
 
+      // Check if this pair should be a stable pool on Aerodrome (e.g. USDC/EURC)
+      const isStable = 
+        (poolTokenA.symbol === "USDC" && poolTokenB.symbol === "EURC") ||
+        (poolTokenA.symbol === "EURC" && poolTokenB.symbol === "USDC");
+
       let rawData: Hex;
       let value = 0n;
 
       if (!poolTokenA.address) {
         // ETH + Token B
         rawData = encodeFunctionData({
-          abi: ROUTER_ABI,
+          abi: AERO_ROUTER_ABI,
           functionName: "addLiquidityETH",
-          args: [poolTokenB.address as `0x${string}`, poolAmountBWei, minB, minA, address, deadline],
+          args: [poolTokenB.address as `0x${string}`, isStable, poolAmountBWei, minB, minA, address, deadline],
         });
         value = poolAmountAWei;
       } else if (!poolTokenB.address) {
         // Token A + ETH
         rawData = encodeFunctionData({
-          abi: ROUTER_ABI,
+          abi: AERO_ROUTER_ABI,
           functionName: "addLiquidityETH",
-          args: [poolTokenA.address as `0x${string}`, poolAmountAWei, minA, minB, address, deadline],
+          args: [poolTokenA.address as `0x${string}`, isStable, poolAmountAWei, minA, minB, address, deadline],
         });
         value = poolAmountBWei;
       } else {
         // Token A + Token B
         rawData = encodeFunctionData({
-          abi: ROUTER_ABI,
+          abi: AERO_ROUTER_ABI,
           functionName: "addLiquidity",
           args: [
             poolTokenA.address as `0x${string}`,
             poolTokenB.address as `0x${string}`,
+            isStable,
             poolAmountAWei,
             poolAmountBWei,
             minA,
