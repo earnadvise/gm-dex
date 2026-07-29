@@ -21,37 +21,11 @@ import {
 } from "lucide-react";
 
 // ─── Wallet Button ───────────────────────────────────────────────────────────
-// Only show these wallet names
-const ALLOWED_WALLETS = ["coinbase", "metamask", "rabby", "injected"];
-
-function WalletButton() {
+function WalletButton({ onConnectClick }: { onConnectClick: () => void }) {
   const { address, isConnected } = useAccount();
-  const { connectors, connect, isPending } = useConnect();
   const { disconnect } = useDisconnect();
-  const [showModal, setShowModal] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropRef = useRef<HTMLDivElement>(null);
-
-  // Filter to only Coinbase, MetaMask, Rabby/Injected
-  const filteredConnectors = connectors.filter((c) => {
-    const id = c.id.toLowerCase();
-    const name = c.name.toLowerCase();
-    return ALLOWED_WALLETS.some((w) => id.includes(w) || name.includes(w));
-  });
-
-  // Dedupe by normalized category
-  const seen = new Set<string>();
-  const uniqueConnectors = filteredConnectors.filter((c) => {
-    const id = c.id.toLowerCase();
-    const name = c.name.toLowerCase();
-    
-    const key = (id.includes("coinbase") || name.includes("coinbase")) ? "coinbase" :
-                (id.includes("metamask") || name.includes("metamask")) ? "metamask" : "injected";
-
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -96,61 +70,13 @@ function WalletButton() {
   }
 
   return (
-    <>
-      <button
-        onClick={() => setShowModal(true)}
-        className="flex items-center gap-2 bg-[#0052ff] hover:bg-[#0045d8] text-white font-semibold rounded-full px-5 py-2.5 transition-all duration-200 shadow-lg shadow-[#0052ff]/30"
-      >
-        <Wallet className="h-4 w-4" />
-        Connect Wallet
-      </button>
-
-      {showModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowModal(false)} />
-          <div className="relative bg-[#0c0d12] border border-white/10 rounded-3xl shadow-2xl w-full max-w-sm p-6">
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <h2 className="text-lg font-bold text-white">Connect Wallet</h2>
-                <p className="text-sm text-zinc-500">Choose your wallet</p>
-              </div>
-              <button onClick={() => setShowModal(false)} className="p-1 hover:bg-white/10 rounded-lg transition-colors">
-                <X className="h-5 w-5 text-zinc-400" />
-              </button>
-            </div>
-            <div className="flex flex-col gap-3">
-              {uniqueConnectors.map((connector) => {
-                const id = connector.id.toLowerCase();
-                const name = connector.name.toLowerCase();
-                const isCoinbase = id.includes("coinbase") || name.includes("coinbase");
-                const isMetaMask = id.includes("metamask") || name.includes("metamask");
-
-                const icon = isCoinbase ? "🔵" : isMetaMask ? "🦊" : "🐰";
-                const label = isCoinbase ? "Coinbase Wallet" : isMetaMask ? "MetaMask" : "Rabby / Browser Wallet";
-                const desc = isCoinbase ? "Smart Wallet or EOA" : isMetaMask ? "Browser extension" : "Injected browser wallet";
-                return (
-                  <button
-                    key={connector.uid}
-                    disabled={isPending}
-                    onClick={() => { connect({ connector }); setShowModal(false); }}
-                    className="flex items-center gap-4 w-full p-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-2xl transition-all duration-200 group"
-                  >
-                    <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-[#0052ff]/20 to-[#ffd700]/20 border border-white/10 flex items-center justify-center flex-shrink-0">
-                      <span className="text-xl">{icon}</span>
-                    </div>
-                    <div className="text-left">
-                      <p className="text-white font-semibold text-sm">{label}</p>
-                      <p className="text-zinc-500 text-xs">{desc}</p>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-zinc-600 group-hover:text-zinc-400 ml-auto transition-colors" />
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-    </>
+    <button
+      onClick={onConnectClick}
+      className="flex items-center gap-2 bg-[#0052ff] hover:bg-[#0045d8] text-white font-semibold rounded-full px-5 py-2.5 transition-all duration-200 shadow-lg shadow-[#0052ff]/30"
+    >
+      <Wallet className="h-4 w-4" />
+      Connect Wallet
+    </button>
   );
 }
 
@@ -284,10 +210,37 @@ function fmtAmt(amount: bigint, decimals: number): string {
   }
 }
 
+const ALLOWED_WALLETS = ["coinbase", "metamask", "rabby", "injected"];
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function Home() {
   const { address, isConnected, chain } = useAccount();
   const { switchChain } = useSwitchChain();
+  const { connectors, connect, isPending: isConnectPending } = useConnect();
+
+  // Connect Modal state
+  const [showConnectModal, setShowConnectModal] = useState(false);
+
+  // Filter to only Coinbase, MetaMask, Rabby/Injected
+  const filteredConnectors = connectors.filter((c) => {
+    const id = c.id.toLowerCase();
+    const name = c.name.toLowerCase();
+    return ALLOWED_WALLETS.some((w) => id.includes(w) || name.includes(w));
+  });
+
+  // Dedupe by normalized category
+  const seen = new Set<string>();
+  const uniqueConnectors = filteredConnectors.filter((c) => {
+    const id = c.id.toLowerCase();
+    const name = c.name.toLowerCase();
+    
+    const key = (id.includes("coinbase") || name.includes("coinbase")) ? "coinbase" :
+                (id.includes("metamask") || name.includes("metamask")) ? "metamask" : "injected";
+
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 
   // Tabs: 'swap' or 'liquidity'
   const [activeTab, setActiveTab] = useState<"swap" | "liquidity">("swap");
@@ -670,7 +623,7 @@ export default function Home() {
               </span>
             </div>
           </div>
-          <WalletButton />
+          <WalletButton onConnectClick={() => setShowConnectModal(true)} />
         </div>
       </header>
 
@@ -1036,6 +989,53 @@ export default function Home() {
           © 2026 GM DEX · Powered by Base & Uniswap
         </div>
       </footer>
+
+      {/* Connect Modal (Rendered at root level to prevent clipping by header backdrop-blur spec) */}
+      {showConnectModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowConnectModal(false)} />
+          <div className="relative bg-[#0c0d12] border border-white/10 rounded-3xl shadow-2xl w-full max-w-sm p-6">
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h2 className="text-lg font-bold text-white">Connect Wallet</h2>
+                <p className="text-sm text-zinc-500">Choose your wallet</p>
+              </div>
+              <button onClick={() => setShowConnectModal(false)} className="p-1 hover:bg-white/10 rounded-lg transition-colors">
+                <X className="h-5 w-5 text-zinc-400" />
+              </button>
+            </div>
+            <div className="flex flex-col gap-3">
+              {uniqueConnectors.map((connector) => {
+                const id = connector.id.toLowerCase();
+                const name = connector.name.toLowerCase();
+                const isCoinbase = id.includes("coinbase") || name.includes("coinbase");
+                const isMetaMask = id.includes("metamask") || name.includes("metamask");
+
+                const icon = isCoinbase ? "🔵" : isMetaMask ? "🦊" : "🐰";
+                const label = isCoinbase ? "Coinbase Wallet" : isMetaMask ? "MetaMask" : "Rabby / Browser Wallet";
+                const desc = isCoinbase ? "Smart Wallet or EOA" : isMetaMask ? "Browser extension" : "Injected browser wallet";
+                return (
+                  <button
+                    key={connector.uid}
+                    disabled={isConnectPending}
+                    onClick={() => { connect({ connector }); setShowConnectModal(false); }}
+                    className="flex items-center gap-4 w-full p-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-2xl transition-all duration-200 group"
+                  >
+                    <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-[#0052ff]/20 to-[#ffd700]/20 border border-white/10 flex items-center justify-center flex-shrink-0">
+                      <span className="text-xl">{icon}</span>
+                    </div>
+                    <div className="text-left">
+                      <p className="text-white font-semibold text-sm">{label}</p>
+                      <p className="text-zinc-500 text-xs">{desc}</p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-zinc-600 group-hover:text-zinc-400 ml-auto transition-colors" />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
