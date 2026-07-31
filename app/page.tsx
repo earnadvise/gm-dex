@@ -514,7 +514,8 @@ export default function Home() {
   };
 
   const finalOutWei = outWei > 0n ? outWei : getEstimatedQuote();
-  const displayOut = finalOutWei > 0n ? fmtAmt(finalOutWei, outputToken.decimals) : "";
+  const rawDisplayOut = finalOutWei > 0n ? fmtAmt(finalOutWei, outputToken.decimals) : "";
+  const displayOut = rawDisplayOut ? parseFloat(rawDisplayOut).toFixed(6).replace(/\.?0+$/, "") : "";
 
   // Allowance
   const { data: allowance, refetch: refetchAllowance } = useReadContract({
@@ -1535,7 +1536,11 @@ export default function Home() {
                         <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />
                         Fetching best price...
                       </button>
-                    ) : outWei === 0n ? (
+                    ) : balanceData && amountWei > balanceData.value ? (
+                      <button disabled className="w-full bg-white/5 border border-white/10 text-red-400 font-bold py-4 rounded-2xl cursor-not-allowed text-sm">
+                        Insufficient {inputToken.symbol} balance
+                      </button>
+                    ) : finalOutWei === 0n ? (
                       <button disabled className="w-full bg-white/5 border border-white/10 text-red-400 font-bold py-4 rounded-2xl cursor-not-allowed text-sm">
                         Insufficient liquidity
                       </button>
