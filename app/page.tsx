@@ -609,7 +609,7 @@ export default function Home() {
     abi: ERC20_ABI,
     functionName: "allowance",
     args: address && poolTokenA.address ? [address, GM_DEX_LIQUIDITY] : undefined,
-    query: { enabled: isConnected && !!address && !!poolTokenA.address },
+    query: { enabled: isConnected && !!address && !!poolTokenA.address, refetchInterval: 2000 },
   });
 
   // Allowance B
@@ -618,7 +618,7 @@ export default function Home() {
     abi: ERC20_ABI,
     functionName: "allowance",
     args: address && poolTokenB.address ? [address, GM_DEX_LIQUIDITY] : undefined,
-    query: { enabled: isConnected && !!address && !!poolTokenB.address },
+    query: { enabled: isConnected && !!address && !!poolTokenB.address, refetchInterval: 2000 },
   });
 
   // Check if this pair should be a stable pool on Aerodrome (e.g. USDC/EURC)
@@ -941,7 +941,10 @@ export default function Home() {
         functionName: "approve",
         args: [GM_DEX_LIQUIDITY, poolAmountAWei],
       });
-      setTimeout(() => refetchAllowanceA(), 2000);
+      const refetchA = () => refetchAllowanceA();
+      setTimeout(refetchA, 1000);
+      setTimeout(refetchA, 2500);
+      setTimeout(refetchA, 4500);
     } catch (e: any) {
       setError(e?.shortMessage || e?.message || "Token A approval failed.");
     }
@@ -958,7 +961,10 @@ export default function Home() {
         functionName: "approve",
         args: [GM_DEX_LIQUIDITY, poolAmountBWei],
       });
-      setTimeout(() => refetchAllowanceB(), 2000);
+      const refetchB = () => refetchAllowanceB();
+      setTimeout(refetchB, 1000);
+      setTimeout(refetchB, 2500);
+      setTimeout(refetchB, 4500);
     } catch (e: any) {
       setError(e?.shortMessage || e?.message || "Token B approval failed.");
     }
