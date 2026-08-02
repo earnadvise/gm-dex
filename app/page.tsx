@@ -1262,14 +1262,11 @@ export default function Home() {
               </button>
               <button
                 onClick={() => { setActiveTab("portfolio"); setError(""); setTxHash(""); }}
-                className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${
+                className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
                   activeTab === "portfolio" ? "bg-[#01C38E] text-white shadow-md shadow-[#01C38E]/20" : "text-zinc-400 hover:text-white"
                 }`}
               >
                 Portfolio
-                <span className="px-1.5 py-0.2 text-[9px] font-black uppercase rounded bg-[#01C38E]/20 text-[#01C38E] flex items-center gap-1">
-                  <Sparkles className="h-2.5 w-2.5" /> AI
-                </span>
               </button>
             </nav>
           </div>
@@ -1951,8 +1948,8 @@ export default function Home() {
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-xs text-zinc-400 font-semibold uppercase tracking-wider">Total Portfolio Value</span>
-                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-[#01C38E]/20 text-[#01C38E] border border-[#01C38E]/30 flex items-center gap-1">
-                    <Sparkles className="h-3 w-3" /> AI Tracker
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-[#01C38E]/20 text-[#01C38E] border border-[#01C38E]/30">
+                    Live Tracker
                   </span>
                 </div>
                 <div className="text-3xl sm:text-4xl font-black text-white tracking-tight">
@@ -1982,20 +1979,20 @@ export default function Home() {
               )}
             </div>
 
-            {/* 🧠 AI Health & Rebalancing Insights Card */}
+            {/* Portfolio Insights Card */}
             <div className="bg-gradient-to-br from-[#01C38E]/10 via-[#0c1322] to-[#0f172a] border border-[#01C38E]/30 rounded-3xl p-6 backdrop-blur-2xl shadow-xl flex flex-col gap-4">
               <div className="flex items-center justify-between border-b border-white/10 pb-3">
                 <div className="flex items-center gap-2">
                   <div className="p-2 rounded-xl bg-[#01C38E]/20 text-[#01C38E]">
-                    <Sparkles className="h-5 w-5 animate-pulse" />
+                    <TrendingUp className="h-5 w-5" />
                   </div>
                   <div>
-                    <h3 className="font-extrabold text-white text-base">GM AI Portfolio Insights</h3>
+                    <h3 className="font-extrabold text-white text-base">Portfolio Insights</h3>
                     <p className="text-xs text-zinc-400">Real-time asset allocation & rebalancing advice</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="text-xs text-zinc-500 block">AI Health Score</span>
+                  <span className="text-xs text-zinc-500 block">Health Score</span>
                   <span className="text-lg font-black text-[#01C38E]">92 / 100</span>
                 </div>
               </div>
