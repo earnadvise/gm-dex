@@ -13,7 +13,7 @@ export const wagmiConfig = createConfig({
   connectors: [
     coinbaseWallet({
       appName: "GM DEX",
-      preference: "smartWalletOnly",
+      preference: "all",
     }),
     // MetaMask
     metaMask({

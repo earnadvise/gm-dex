@@ -2450,7 +2450,11 @@ export default function Home() {
 
                 const icon = isCoinbase ? "🔵" : isMetaMask ? "🦊" : "🐰";
                 const label = isCoinbase ? "Coinbase Wallet" : isMetaMask ? "MetaMask" : "Rabby / Browser Wallet";
-                const desc = isCoinbase ? "Smart Wallet or EOA" : isMetaMask ? "Browser extension" : "Injected browser wallet";
+                const desc = isCoinbase
+                  ? "Passkey / FaceID — Instant in browser"
+                  : isMetaMask
+                  ? "Opens in MetaMask App"
+                  : "Browser extension or wallet app";
                 return (
                   <button
                     key={connector.uid}
