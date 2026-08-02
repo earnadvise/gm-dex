@@ -5,6 +5,7 @@ import { useAccount, useConnect, useDisconnect, useSendTransaction, useReadContr
 import { encodeFunctionData, Hex } from "viem";
 import { appendBuilderCode, BUILDER_CODE } from "@/lib/builderCode";
 import { SUPPORTED_TOKENS } from "@/lib/tokens";
+import { TokenIcon } from "@/components/TokenIcon";
 import {
   ArrowRightLeft,
   ArrowRight,
@@ -2036,13 +2037,7 @@ export default function Home() {
                 {allTokens.map((t) => (
                   <div key={`port-${t.symbol}`} className="flex items-center justify-between p-3.5 rounded-2xl bg-black/30 border border-white/5 hover:border-white/10 transition-all">
                     <div className="flex items-center gap-3">
-                      {t.image ? (
-                        <img src={t.image} alt="" className="w-8 h-8 rounded-full" />
-                      ) : (
-                        <div className="w-8 h-8 rounded-full bg-[#01C38E]/20 text-[#01C38E] font-bold text-xs flex items-center justify-center">
-                          {t.symbol.slice(0, 2)}
-                        </div>
-                      )}
+                      <TokenIcon symbol={t.symbol} image={t.image} className="w-8 h-8 rounded-full" />
                       <div>
                         <div className="font-bold text-white text-sm">{t.symbol}</div>
                         <div className="text-xs text-zinc-500">{t.name}</div>
@@ -2531,7 +2526,7 @@ export default function Home() {
                   }}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold transition-all cursor-pointer"
                 >
-                  {t.image && <img src={t.image} alt="" className="w-4 h-4 rounded-full" />}
+                  <TokenIcon symbol={t.symbol} image={t.image} className="w-4 h-4 rounded-full" />
                   <span>{t.symbol}</span>
                 </button>
               ))}
@@ -2554,7 +2549,7 @@ export default function Home() {
                     decimals: Number(customDecimals || 18),
                     name: String(customName || customSymbol),
                     symbol: String(customSymbol),
-                    image: "https://assets.coingecko.com/coins/images/279/small/ethereum.png"
+                    image: "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png"
                   })}
                   className="px-3.5 py-1.5 bg-[#01C38E] hover:bg-[#00ab7c] text-white font-bold text-xs rounded-xl transition-all shadow-md shadow-[#01C38E]/20 cursor-pointer"
                 >
@@ -2587,13 +2582,7 @@ export default function Home() {
                         }}
                         className="flex items-center gap-3 flex-1 text-left cursor-pointer"
                       >
-                        {t.image ? (
-                          <img src={t.image} alt="" className="w-8 h-8 rounded-full" />
-                        ) : (
-                          <div className="w-8 h-8 rounded-full bg-[#01C38E]/20 text-[#01C38E] font-bold text-xs flex items-center justify-center">
-                            {t.symbol.slice(0, 2)}
-                          </div>
-                        )}
+                        <TokenIcon symbol={t.symbol} image={t.image} className="w-8 h-8 rounded-full" />
                         <div>
                           <div className="flex items-center gap-2">
                             <span className="font-bold text-white text-sm">{t.symbol}</span>
