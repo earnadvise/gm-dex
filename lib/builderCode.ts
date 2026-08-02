@@ -1,10 +1,10 @@
 import { Attribution } from "ox/erc8021";
 import { concat, Hex } from "viem";
 
-export const BUILDER_CODE = process.env.NEXT_PUBLIC_BUILDER_CODE || "bc_jr1lqf3i";
+export const BUILDER_CODE = process.env.NEXT_PUBLIC_BUILDER_CODE || "6a488e6c2876ee6c1138a856";
 
 /**
- * Appends the Builder Code to transaction calldata for transaction attribution.
+ * Appends the Base Builder Code (ERC-8021) to transaction calldata for ecosystem fee attribution.
  */
 export function appendBuilderCode(calldata: string | undefined): Hex | undefined {
   if (!calldata) return undefined;
