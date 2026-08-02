@@ -13,7 +13,7 @@ export const ETH: Token = {
   decimals: 18,
   name: "Ethereum",
   symbol: "ETH",
-  image: "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png",
+  image: "/tokens/eth.svg",
 };
 
 export const USDC: Token = {
@@ -22,7 +22,7 @@ export const USDC: Token = {
   decimals: 6,
   name: "USD Coin",
   symbol: "USDC",
-  image: "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/A0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48/logo.png",
+  image: "/tokens/usdc.svg",
 };
 
 export const cbBTC: Token = {
@@ -31,7 +31,7 @@ export const cbBTC: Token = {
   decimals: 8,
   name: "Coinbase Wrapped BTC",
   symbol: "cbBTC",
-  image: "https://coin-images.coingecko.com/coins/images/40143/small/cbbtc.webp",
+  image: "/tokens/cbbtc.svg",
 };
 
 export const EURC: Token = {
@@ -40,7 +40,7 @@ export const EURC: Token = {
   decimals: 6,
   name: "Euro Coin",
   symbol: "EURC",
-  image: "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/1aBa108157F38269dF53802126a7b55714844533/logo.png",
+  image: "/tokens/eurc.svg",
 };
 
 export const DEGEN: Token = {
@@ -49,7 +49,7 @@ export const DEGEN: Token = {
   decimals: 18,
   name: "Degen",
   symbol: "DEGEN",
-  image: "https://coin-images.coingecko.com/coins/images/34515/small/android-chrome-512x512.png",
+  image: "/tokens/degen.svg",
 };
 
 export const BRETT: Token = {
@@ -58,7 +58,7 @@ export const BRETT: Token = {
   decimals: 18,
   name: "Brett",
   symbol: "BRETT",
-  image: "https://coin-images.coingecko.com/coins/images/35529/small/brett.png",
+  image: "/tokens/brett.svg",
 };
 
 export const TOSHI: Token = {
@@ -67,7 +67,7 @@ export const TOSHI: Token = {
   decimals: 18,
   name: "Toshi",
   symbol: "TOSHI",
-  image: "https://coin-images.coingecko.com/coins/images/31181/small/toshi.png",
+  image: "/tokens/toshi.svg",
 };
 
 export const AERO: Token = {
@@ -76,7 +76,7 @@ export const AERO: Token = {
   decimals: 18,
   name: "Aerodrome",
   symbol: "AERO",
-  image: "https://coin-images.coingecko.com/coins/images/31745/small/aerodrome.png",
+  image: "/tokens/aero.svg",
 };
 
 export const VIRTUAL: Token = {
@@ -85,7 +85,7 @@ export const VIRTUAL: Token = {
   decimals: 18,
   name: "Virtual Protocol",
   symbol: "VIRTUAL",
-  image: "https://coin-images.coingecko.com/coins/images/34067/small/virtual.png",
+  image: "/tokens/virtual.svg",
 };
 
 export const SUPPORTED_TOKENS = [ETH, USDC, cbBTC, EURC, DEGEN, BRETT, TOSHI, AERO, VIRTUAL];
