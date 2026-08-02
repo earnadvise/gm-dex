@@ -344,11 +344,19 @@ export default function Home() {
   // Connect Modal state
   const [showConnectModal, setShowConnectModal] = useState(false);
 
-  // Filter to only Coinbase, MetaMask, Rabby/Injected
+  // Filter connectors to clean Coinbase, MetaMask, and Injected (only if window.ethereum exists)
   const filteredConnectors = connectors.filter((c) => {
     const id = c.id.toLowerCase();
     const name = c.name.toLowerCase();
-    return ALLOWED_WALLETS.some((w) => id.includes(w) || name.includes(w));
+    const isCoinbase = id.includes("coinbase") || name.includes("coinbase");
+    const isMetaMask = id.includes("metamask") || name.includes("metamask");
+    const isInjected = id.includes("injected") || id.includes("rabby") || name.includes("injected") || name.includes("rabby");
+
+    if (isCoinbase || isMetaMask) return true;
+    if (isInjected) {
+      return typeof window !== "undefined" && typeof (window as any).ethereum !== "undefined";
+    }
+    return false;
   });
 
   // Dedupe by normalized category
