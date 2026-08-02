@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/providers/Providers";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
+import { PWAInstallBanner } from "@/components/PWAInstallBanner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,6 +18,12 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "GM DEX | Daily Streaks & Swaps on Base",
   description: "Keep your daily GM streak alive, claim XP, unlock onchain badges, and swap premium tokens on Base.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "GM DEX",
+  },
   other: {
     "base:app_id": "6a488e6c2876ee6c1138a856",
   },
@@ -36,6 +43,7 @@ export default function RootLayout({
         <Providers>
           {children}
           <ServiceWorkerRegistration />
+          <PWAInstallBanner />
         </Providers>
       </body>
     </html>
