@@ -2455,8 +2455,27 @@ export default function Home() {
                   <button
                     key={connector.uid}
                     disabled={isConnectPending}
-                    onClick={() => { connect({ connector }); setShowConnectModal(false); }}
-                    className="flex items-center gap-4 w-full p-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-2xl transition-all duration-200 group"
+                    onClick={() => {
+                      const isMobile = typeof window !== "undefined" && /iphone|ipad|ipod|android/i.test(navigator.userAgent);
+                      const hasInjected = typeof window !== "undefined" && typeof (window as any).ethereum !== "undefined";
+
+                      if (isMobile && !hasInjected) {
+                        if (isMetaMask) {
+                          window.location.href = "https://metamask.app.link/dapp/gm-dex.vercel.app";
+                          setShowConnectModal(false);
+                          return;
+                        }
+                        if (isCoinbase) {
+                          window.location.href = "https://go.cb-w.com/dapp?cb_url=https%3A%2F%2Fgm-dex.vercel.app";
+                          setShowConnectModal(false);
+                          return;
+                        }
+                      }
+
+                      connect({ connector });
+                      setShowConnectModal(false);
+                    }}
+                    className="flex items-center gap-4 w-full p-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-2xl transition-all duration-200 group cursor-pointer"
                   >
                     <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-[#01C38E]/20 to-[#01C38E]/20 border border-white/10 flex items-center justify-center flex-shrink-0">
                       <span className="text-xl">{icon}</span>
