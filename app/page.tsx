@@ -1224,8 +1224,8 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Navigation Tabs */}
-            <nav className="flex items-center gap-1 bg-black/40 p-1 rounded-xl border border-white/5">
+            {/* Desktop Navigation Tabs */}
+            <nav className="hidden md:flex items-center gap-1 bg-black/40 p-1 rounded-xl border border-white/5">
               <button
                 onClick={() => { setActiveTab("home"); setError(""); setTxHash(""); }}
                 className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
@@ -1276,7 +1276,7 @@ export default function Home() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 flex items-center justify-center px-4 py-10">
+      <main className="flex-1 flex items-center justify-center px-3.5 py-4 sm:py-10 pb-24 md:pb-10">
         {activeTab === "home" ? (
           /* Home DEX Landing Overview */
           <div className="w-full max-w-5xl flex flex-col gap-12 py-4">
@@ -2359,8 +2359,61 @@ export default function Home() {
         </div>
       )}
 
+      {/* Native Mobile Bottom Navigation Bar */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0c1222]/95 border-t border-white/10 backdrop-blur-xl px-2 py-2 flex items-center justify-around shadow-2xl">
+        <button
+          onClick={() => { setActiveTab("home"); setError(""); setTxHash(""); }}
+          className={`flex flex-col items-center gap-1 py-1.5 px-3 rounded-xl transition-all cursor-pointer ${
+            activeTab === "home" ? "text-[#01C38E] font-extrabold scale-105" : "text-zinc-400 hover:text-white font-medium"
+          }`}
+        >
+          <Sun className="h-5 w-5" />
+          <span className="text-[10px]">Home</span>
+        </button>
+
+        <button
+          onClick={() => { setActiveTab("swap"); setError(""); setTxHash(""); }}
+          className={`flex flex-col items-center gap-1 py-1.5 px-3 rounded-xl transition-all cursor-pointer ${
+            activeTab === "swap" ? "text-[#01C38E] font-extrabold scale-105" : "text-zinc-400 hover:text-white font-medium"
+          }`}
+        >
+          <ArrowRightLeft className="h-5 w-5" />
+          <span className="text-[10px]">Swap</span>
+        </button>
+
+        <button
+          onClick={() => { setActiveTab("liquidity"); setError(""); setTxHash(""); }}
+          className={`flex flex-col items-center gap-1 py-1.5 px-3 rounded-xl transition-all cursor-pointer ${
+            activeTab === "liquidity" ? "text-[#01C38E] font-extrabold scale-105" : "text-zinc-400 hover:text-white font-medium"
+          }`}
+        >
+          <Droplet className="h-5 w-5" />
+          <span className="text-[10px]">Pools</span>
+        </button>
+
+        <button
+          onClick={() => { setActiveTab("bridge"); setError(""); setTxHash(""); }}
+          className={`flex flex-col items-center gap-1 py-1.5 px-3 rounded-xl transition-all cursor-pointer ${
+            activeTab === "bridge" ? "text-[#01C38E] font-extrabold scale-105" : "text-zinc-400 hover:text-white font-medium"
+          }`}
+        >
+          <Layers className="h-5 w-5" />
+          <span className="text-[10px]">Bridge</span>
+        </button>
+
+        <button
+          onClick={() => { setActiveTab("portfolio"); setError(""); setTxHash(""); }}
+          className={`flex flex-col items-center gap-1 py-1.5 px-3 rounded-xl transition-all cursor-pointer ${
+            activeTab === "portfolio" ? "text-[#01C38E] font-extrabold scale-105" : "text-zinc-400 hover:text-white font-medium"
+          }`}
+        >
+          <Wallet className="h-5 w-5" />
+          <span className="text-[10px]">Portfolio</span>
+        </button>
+      </nav>
+
       {/* Footer */}
-      <footer className="border-t border-white/5 py-5 bg-black/30">
+      <footer className="border-t border-white/5 py-5 bg-black/30 pb-20 md:pb-5">
         <div className="max-w-5xl mx-auto px-4 text-center text-xs text-zinc-600">
           © 2026 GM DEX · Powered by Base & Uniswap
         </div>
