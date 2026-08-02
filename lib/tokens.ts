@@ -52,4 +52,40 @@ export const DEGEN: Token = {
   image: "https://assets.coingecko.com/coins/images/34515/small/android-chrome-512x512.png",
 };
 
-export const SUPPORTED_TOKENS = [ETH, USDC, cbBTC, EURC, DEGEN];
+export const BRETT: Token = {
+  address: "0x532f27101965dd16442E59d40670FaF5ebb142E4",
+  chainId: 8453,
+  decimals: 18,
+  name: "Brett",
+  symbol: "BRETT",
+  image: "https://assets.coingecko.com/coins/images/35529/small/brett.png",
+};
+
+export const TOSHI: Token = {
+  address: "0xAC1Bd2447a101b0089A7696256B111c8389E5A0B",
+  chainId: 8453,
+  decimals: 18,
+  name: "Toshi",
+  symbol: "TOSHI",
+  image: "https://assets.coingecko.com/coins/images/31181/small/toshi.png",
+};
+
+export const AERO: Token = {
+  address: "0x940181a94A35A4569E4529A3CDfB74e38FD98631",
+  chainId: 8453,
+  decimals: 18,
+  name: "Aerodrome",
+  symbol: "AERO",
+  image: "https://assets.coingecko.com/coins/images/31745/small/aerodrome.png",
+};
+
+export const VIRTUAL: Token = {
+  address: "0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b",
+  chainId: 8453,
+  decimals: 18,
+  name: "Virtual Protocol",
+  symbol: "VIRTUAL",
+  image: "https://assets.coingecko.com/coins/images/34067/small/virtual.png",
+};
+
+export const SUPPORTED_TOKENS = [ETH, USDC, cbBTC, EURC, DEGEN, BRETT, TOSHI, AERO, VIRTUAL];

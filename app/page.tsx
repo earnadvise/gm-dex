@@ -25,6 +25,10 @@ import {
   Zap,
   Droplet,
   ShieldCheck,
+  Settings,
+  Search,
+  Plus,
+  Trash2,
 } from "lucide-react";
 
 // ─── Wallet Button ───────────────────────────────────────────────────────────
@@ -196,6 +200,27 @@ const ERC20_ABI = [
     stateMutability: "view",
     type: "function",
   },
+  {
+    inputs: [],
+    name: "symbol",
+    outputs: [{ name: "", type: "string" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "name",
+    outputs: [{ name: "", type: "string" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "decimals",
+    outputs: [{ name: "", type: "uint8" }],
+    stateMutability: "view",
+    type: "function",
+  },
 ] as const;
 
 const ROUTER_ABI = [
@@ -341,6 +366,82 @@ export default function Home() {
 
   // Tabs: 'home', 'swap', 'liquidity', or 'bridge'
   const [activeTab, setActiveTab] = useState<"home" | "swap" | "liquidity" | "bridge">("home");
+
+  // Slippage & Settings State (Option 4)
+  const [slippage, setSlippage] = useState<number>(0.5); // Default 0.5%
+  const [customSlippage, setCustomSlippage] = useState("");
+  const [deadlineMinutes, setDeadlineMinutes] = useState<number>(20); // Default 20 mins
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+
+  // Custom Token & Token Modal State (Option 3)
+  const [tokenSearchQuery, setTokenSearchQuery] = useState("");
+  const [customTokens, setCustomTokens] = useState<any[]>([]);
+  const [tokenModalTarget, setTokenModalTarget] = useState<"input" | "output" | "poolA" | "poolB" | null>(null);
+
+  // Load custom tokens from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("gm_dex_custom_tokens");
+      if (saved) {
+        setCustomTokens(JSON.parse(saved));
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }, []);
+
+  const allTokens = [...SUPPORTED_TOKENS, ...customTokens.filter(ct => !SUPPORTED_TOKENS.some(st => st.address.toLowerCase() === ct.address.toLowerCase()))];
+
+  // Custom Token Address Lookup Hooks (Option 3)
+  const isAddressSearch = tokenSearchQuery.startsWith("0x") && tokenSearchQuery.length === 42;
+  const searchAddr = isAddressSearch ? (tokenSearchQuery as `0x${string}`) : undefined;
+
+  const { data: customSymbol } = useReadContract({
+    address: searchAddr,
+    abi: ERC20_ABI,
+    functionName: "symbol",
+    query: { enabled: !!searchAddr },
+  });
+
+  const { data: customName } = useReadContract({
+    address: searchAddr,
+    abi: ERC20_ABI,
+    functionName: "name",
+    query: { enabled: !!searchAddr },
+  });
+
+  const { data: customDecimals } = useReadContract({
+    address: searchAddr,
+    abi: ERC20_ABI,
+    functionName: "decimals",
+    query: { enabled: !!searchAddr },
+  });
+
+  const handleImportToken = (newTok: any) => {
+    const updated = [...customTokens, newTok];
+    setCustomTokens(updated);
+    try {
+      localStorage.setItem("gm_dex_custom_tokens", JSON.stringify(updated));
+    } catch (e) {
+      console.error(e);
+    }
+    if (tokenModalTarget === "input") setInputToken(newTok);
+    if (tokenModalTarget === "output") setOutputToken(newTok);
+    if (tokenModalTarget === "poolA") setPoolTokenA(newTok);
+    if (tokenModalTarget === "poolB") setPoolTokenB(newTok);
+    setTokenModalTarget(null);
+    setTokenSearchQuery("");
+  };
+
+  const handleRemoveCustomToken = (tokAddress: string) => {
+    const updated = customTokens.filter(t => t.address.toLowerCase() !== tokAddress.toLowerCase());
+    setCustomTokens(updated);
+    try {
+      localStorage.setItem("gm_dex_custom_tokens", JSON.stringify(updated));
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   // Swap state
   const [amount, setAmount] = useState("");
@@ -554,9 +655,11 @@ export default function Home() {
       setTxHash("");
       if (!address) return;
 
+      const activeSlippage = customSlippage && !isNaN(Number(customSlippage)) ? Number(customSlippage) : slippage;
+      const minSlippageBps = BigInt(Math.max(1, Math.floor((100 - activeSlippage) * 100)));
       const amountIn = amountWei;
-      const amountOutMin = finalOutWei > 0n ? (finalOutWei * 85n / 100n) : 0n; // 15% slippage buffer for testnet/dex router
-      const deadline = BigInt(Math.floor(Date.now() / 1000) + 1200);
+      const amountOutMin = finalOutWei > 0n ? (finalOutWei * minSlippageBps) / 10000n : 0n;
+      const deadline = BigInt(Math.floor(Date.now() / 1000) + (deadlineMinutes || 20) * 60);
 
       let rawData: Hex;
       let value = 0n;
@@ -1383,9 +1486,18 @@ export default function Home() {
                     <span className="text-white font-extrabold text-lg flex items-center gap-2">
                       <ArrowRightLeft className="h-5 w-5 text-[#01C38E]" /> Swap Tokens
                     </span>
-                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[#01C38E]/10 border border-[#01C38E]/20 text-[#01C38E]">
-                      Auto-Router
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-[#01C38E]/10 border border-[#01C38E]/20 text-[#01C38E]">
+                        {customSlippage ? `${customSlippage}%` : `${slippage}%`} Slippage
+                      </span>
+                      <button
+                        onClick={() => setShowSettingsModal(true)}
+                        className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-400 hover:text-white transition-all cursor-pointer"
+                        title="Swap Settings"
+                      >
+                        <Settings className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
 
                   {/* Input */}
@@ -1417,28 +1529,14 @@ export default function Home() {
                         onChange={(e) => { setAmount(e.target.value); setError(""); setTxHash(""); }}
                         className="bg-transparent text-[28px] font-bold text-white outline-none w-full placeholder-zinc-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       />
-                      <div className="relative" ref={inputDDRef}>
-                        <button
-                          onClick={() => { setShowInputDD(!showInputDD); setShowOutputDD(false); }}
-                          className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 pl-2 pr-2.5 py-1.5 rounded-full transition-colors shrink-0"
-                        >
-                          {inputToken.image && <img src={inputToken.image} alt="" className="w-5 h-5 rounded-full" />}
-                          <span className="font-bold text-sm">{inputToken.symbol}</span>
-                          <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />
-                        </button>
-                        {showInputDD && (
-                          <div className="absolute right-0 mt-2 w-44 bg-[#0c1222] border border-white/10 rounded-2xl shadow-xl z-50 overflow-hidden py-1">
-                            {SUPPORTED_TOKENS.map((t) => (
-                              <button key={`i-${t.symbol}`} onClick={() => selectInput(t)}
-                                className="flex items-center gap-2.5 w-full px-3 py-2.5 hover:bg-white/5 text-left text-sm">
-                                {t.image && <img src={t.image} alt="" className="w-5 h-5 rounded-full" />}
-                                <span className="font-semibold">{t.symbol}</span>
-                                {t.symbol === inputToken.symbol && <Check className="h-3.5 w-3.5 text-[#01C38E] ml-auto" />}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                      <button
+                        onClick={() => { setTokenModalTarget("input"); setTokenSearchQuery(""); }}
+                        className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 pl-2 pr-2.5 py-1.5 rounded-full transition-colors shrink-0 cursor-pointer"
+                      >
+                        {inputToken.image && <img src={inputToken.image} alt="" className="w-5 h-5 rounded-full" />}
+                        <span className="font-bold text-sm">{inputToken.symbol}</span>
+                        <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />
+                      </button>
                     </div>
                   </div>
 
@@ -1459,28 +1557,14 @@ export default function Home() {
                       <div className="text-[28px] font-bold text-white flex-1 min-h-[42px] flex items-center">
                         {displayOut || <span className="text-zinc-700">0</span>}
                       </div>
-                      <div className="relative" ref={outputDDRef}>
-                        <button
-                          onClick={() => { setShowOutputDD(!showOutputDD); setShowInputDD(false); }}
-                          className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 pl-2 pr-2.5 py-1.5 rounded-full transition-colors shrink-0"
-                        >
-                          {outputToken.image && <img src={outputToken.image} alt="" className="w-5 h-5 rounded-full" />}
-                          <span className="font-bold text-sm">{outputToken.symbol}</span>
-                          <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />
-                        </button>
-                        {showOutputDD && (
-                          <div className="absolute right-0 mt-2 w-44 bg-[#0c1222] border border-white/10 rounded-2xl shadow-xl z-50 overflow-hidden py-1">
-                            {SUPPORTED_TOKENS.map((t) => (
-                              <button key={`o-${t.symbol}`} onClick={() => selectOutput(t)}
-                                className="flex items-center gap-2.5 w-full px-3 py-2.5 hover:bg-white/5 text-left text-sm">
-                                {t.image && <img src={t.image} alt="" className="w-5 h-5 rounded-full" />}
-                                <span className="font-semibold">{t.symbol}</span>
-                                {t.symbol === outputToken.symbol && <Check className="h-3.5 w-3.5 text-[#01C38E] ml-auto" />}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                      <button
+                        onClick={() => { setTokenModalTarget("output"); setTokenSearchQuery(""); }}
+                        className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 pl-2 pr-2.5 py-1.5 rounded-full transition-colors shrink-0 cursor-pointer"
+                      >
+                        {outputToken.image && <img src={outputToken.image} alt="" className="w-5 h-5 rounded-full" />}
+                        <span className="font-bold text-sm">{outputToken.symbol}</span>
+                        <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />
+                      </button>
                     </div>
                   </div>
 
@@ -2185,6 +2269,208 @@ export default function Home() {
                   </button>
                 );
               })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Slippage & Transaction Settings Modal (Option 4) ─── */}
+      {showSettingsModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowSettingsModal(false)} />
+          <div className="relative bg-[#0c1222] border border-white/10 rounded-3xl shadow-2xl w-full max-w-sm p-6 text-white">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-5">
+              <div className="flex items-center gap-2">
+                <Settings className="h-5 w-5 text-[#01C38E]" />
+                <h2 className="text-lg font-bold">Swap Settings</h2>
+              </div>
+              <button onClick={() => setShowSettingsModal(false)} className="p-1 hover:bg-white/10 rounded-lg transition-colors cursor-pointer">
+                <X className="h-5 w-5 text-zinc-400" />
+              </button>
+            </div>
+
+            {/* Slippage Tolerance */}
+            <div className="mb-5">
+              <label className="text-xs text-zinc-400 font-semibold mb-2.5 block">Slippage Tolerance</label>
+              <div className="grid grid-cols-4 gap-2">
+                {[0.1, 0.5, 1.0].map((val) => (
+                  <button
+                    key={val}
+                    onClick={() => { setSlippage(val); setCustomSlippage(""); }}
+                    className={`py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                      slippage === val && !customSlippage
+                        ? "bg-[#01C38E] border-[#01C38E] text-white shadow-lg shadow-[#01C38E]/20"
+                        : "bg-white/5 border-white/10 text-zinc-300 hover:bg-white/10"
+                    }`}
+                  >
+                    {val}%
+                  </button>
+                ))}
+                <div className="relative">
+                  <input
+                    type="number"
+                    placeholder="Custom"
+                    value={customSlippage}
+                    onChange={(e) => { setCustomSlippage(e.target.value); }}
+                    className={`w-full py-2 px-2.5 rounded-xl text-xs font-bold bg-white/5 border text-center outline-none transition-all ${
+                      customSlippage ? "border-[#01C38E] text-[#01C38E]" : "border-white/10 text-white placeholder-zinc-500"
+                    }`}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Transaction Deadline */}
+            <div className="mb-5">
+              <label className="text-xs text-zinc-400 font-semibold mb-2 block">Transaction Deadline</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  value={deadlineMinutes}
+                  onChange={(e) => setDeadlineMinutes(Number(e.target.value) || 20)}
+                  className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm font-bold text-white outline-none w-24 text-center"
+                />
+                <span className="text-xs text-zinc-400">minutes</span>
+              </div>
+            </div>
+
+            {/* Router info */}
+            <div className="bg-black/40 border border-white/5 rounded-2xl p-4 text-xs space-y-2">
+              <div className="flex justify-between text-zinc-400">
+                <span>Protocol Treasury Fee</span>
+                <span className="text-[#01C38E] font-bold">0.1%</span>
+              </div>
+              <div className="flex justify-between text-zinc-400">
+                <span>Base Builder Attribution</span>
+                <span className="text-white font-mono font-bold">ERC-8021</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Token Selector & Custom Token Import Modal (Option 3) ─── */}
+      {tokenModalTarget !== null && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setTokenModalTarget(null)} />
+          <div className="relative bg-[#0c1222] border border-white/10 rounded-3xl shadow-2xl w-full max-w-md p-6 text-white max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
+              <h2 className="text-lg font-bold">Select Token</h2>
+              <button onClick={() => setTokenModalTarget(null)} className="p-1 hover:bg-white/10 rounded-lg transition-colors cursor-pointer">
+                <X className="h-5 w-5 text-zinc-400" />
+              </button>
+            </div>
+
+            {/* Search Input */}
+            <div className="relative mb-4">
+              <Search className="absolute left-3.5 top-3 h-4 w-4 text-zinc-500" />
+              <input
+                type="text"
+                placeholder="Search name, symbol or paste address 0x..."
+                value={tokenSearchQuery}
+                onChange={(e) => setTokenSearchQuery(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 focus:border-[#01C38E] rounded-2xl pl-10 pr-4 py-2.5 text-sm text-white outline-none placeholder-zinc-500 transition-all font-mono"
+              />
+            </div>
+
+            {/* Quick Pills */}
+            <div className="flex flex-wrap gap-1.5 mb-4 pb-3 border-b border-white/5">
+              {allTokens.slice(0, 7).map((t) => (
+                <button
+                  key={`pill-${t.symbol}`}
+                  onClick={() => {
+                    if (tokenModalTarget === "input") setInputToken(t);
+                    if (tokenModalTarget === "output") setOutputToken(t);
+                    if (tokenModalTarget === "poolA") setPoolTokenA(t);
+                    if (tokenModalTarget === "poolB") setPoolTokenB(t);
+                    setTokenModalTarget(null);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold transition-all cursor-pointer"
+                >
+                  {t.image && <img src={t.image} alt="" className="w-4 h-4 rounded-full" />}
+                  <span>{t.symbol}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Address Search On-Chain Import Card */}
+            {isAddressSearch && customSymbol && (
+              <div className="bg-gradient-to-r from-[#01C38E]/10 to-transparent border border-[#01C38E]/30 rounded-2xl p-4 flex items-center justify-between mb-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-white text-sm">{String(customSymbol)}</span>
+                    <span className="text-[10px] bg-[#01C38E]/20 text-[#01C38E] font-bold px-2 py-0.5 rounded">Custom Token</span>
+                  </div>
+                  <div className="text-xs text-zinc-400 mt-0.5">{String(customName || "ERC20 Token")} • {Number(customDecimals || 18)} Decimals</div>
+                </div>
+                <button
+                  onClick={() => handleImportToken({
+                    address: tokenSearchQuery,
+                    chainId: 8453,
+                    decimals: Number(customDecimals || 18),
+                    name: String(customName || customSymbol),
+                    symbol: String(customSymbol),
+                    image: "https://assets.coingecko.com/coins/images/279/small/ethereum.png"
+                  })}
+                  className="px-3.5 py-1.5 bg-[#01C38E] hover:bg-[#00ab7c] text-white font-bold text-xs rounded-xl transition-all shadow-md shadow-[#01C38E]/20 cursor-pointer"
+                >
+                  Import
+                </button>
+              </div>
+            )}
+
+            {/* Token List */}
+            <div className="overflow-y-auto flex-1 space-y-1 pr-1">
+              {allTokens
+                .filter((t) => {
+                  const q = tokenSearchQuery.toLowerCase();
+                  return t.symbol.toLowerCase().includes(q) || t.name.toLowerCase().includes(q) || t.address.toLowerCase() === q;
+                })
+                .map((t) => {
+                  const isCustom = customTokens.some(ct => ct.address.toLowerCase() === t.address.toLowerCase());
+                  return (
+                    <div
+                      key={`tok-${t.symbol}-${t.address}`}
+                      className="flex items-center justify-between p-3 rounded-2xl hover:bg-white/5 border border-transparent hover:border-white/5 transition-all group"
+                    >
+                      <button
+                        onClick={() => {
+                          if (tokenModalTarget === "input") setInputToken(t);
+                          if (tokenModalTarget === "output") setOutputToken(t);
+                          if (tokenModalTarget === "poolA") setPoolTokenA(t);
+                          if (tokenModalTarget === "poolB") setPoolTokenB(t);
+                          setTokenModalTarget(null);
+                        }}
+                        className="flex items-center gap-3 flex-1 text-left cursor-pointer"
+                      >
+                        {t.image ? (
+                          <img src={t.image} alt="" className="w-8 h-8 rounded-full" />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-[#01C38E]/20 text-[#01C38E] font-bold text-xs flex items-center justify-center">
+                            {t.symbol.slice(0, 2)}
+                          </div>
+                        )}
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-white text-sm">{t.symbol}</span>
+                            {isCustom && <span className="text-[9px] bg-white/10 text-zinc-400 font-bold px-1.5 py-0.5 rounded">Custom</span>}
+                          </div>
+                          <p className="text-xs text-zinc-500">{t.name}</p>
+                        </div>
+                      </button>
+
+                      {isCustom && (
+                        <button
+                          onClick={() => handleRemoveCustomToken(t.address)}
+                          className="p-1.5 text-zinc-500 hover:text-red-400 transition-colors cursor-pointer"
+                          title="Remove custom token"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
             </div>
           </div>
         </div>
