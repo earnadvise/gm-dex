@@ -373,6 +373,15 @@ export default function Home() {
   const [deadlineMinutes, setDeadlineMinutes] = useState<number>(20); // Default 20 mins
   const [showSettingsModal, setShowSettingsModal] = useState(false);
 
+  // Price Chart State (Option 1)
+  const [showChart, setShowChart] = useState(true);
+
+  const getChartEmbedUrl = () => {
+    const targetToken = outputToken.address ? outputToken : inputToken.address ? inputToken : SUPPORTED_TOKENS[1];
+    const tokenAddr = targetToken.address || "0x4200000000000000000000000000000000000006";
+    return `https://dexscreener.com/base/${tokenAddr}?embed=1&theme=dark&trades=0&info=0`;
+  };
+
   // Custom Token & Token Modal State (Option 3)
   const [tokenSearchQuery, setTokenSearchQuery] = useState("");
   const [customTokens, setCustomTokens] = useState<any[]>([]);
