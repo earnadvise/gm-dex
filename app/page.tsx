@@ -6,6 +6,7 @@ import { encodeFunctionData, Hex } from "viem";
 import { appendBuilderCode, BUILDER_CODE } from "@/lib/builderCode";
 import { SUPPORTED_TOKENS } from "@/lib/tokens";
 import { TokenIcon } from "@/components/TokenIcon";
+import { AIAgentCopilot } from "@/components/AIAgentCopilot";
 import {
   ArrowRightLeft,
   ArrowRight,
@@ -1204,6 +1205,17 @@ export default function Home() {
     setError("");
     setTxHash("");
     if (t.symbol === inputToken.symbol) setInputToken(outputToken);
+  };
+
+  const handleAutoFillSwap = (inSym: string, outSym: string, amt: string) => {
+    const foundIn = allTokens.find(t => t.symbol.toUpperCase() === inSym.toUpperCase());
+    const foundOut = allTokens.find(t => t.symbol.toUpperCase() === outSym.toUpperCase());
+    if (foundIn) setInputToken(foundIn);
+    if (foundOut) setOutputToken(foundOut);
+    if (amt) setAmount(amt);
+    setActiveTab("swap");
+    setError("");
+    setTxHash("");
   };
 
   return (
@@ -2692,6 +2704,14 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {/* GM AI Autonomous Trading Agent Copilot */}
+      <AIAgentCopilot
+        onAutoFillSwap={handleAutoFillSwap}
+        onNavigateTab={(tab) => { setActiveTab(tab); setError(""); setTxHash(""); }}
+        walletConnected={isConnected}
+        walletBalance={balanceData ? parseFloat(balanceData.formatted || "0").toFixed(4) : "0.00"}
+      />
     </div>
   );
 }
