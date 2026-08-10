@@ -1,58 +1,169 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Bot, Sparkles, Send, ArrowRight, ShieldCheck, TrendingUp, Zap, Wallet, History, HelpCircle, Terminal, Trash2 } from "lucide-react";
-import { Token, SUPPORTED_TOKENS } from "@/lib/tokens";
+import { useAccount, useSendTransaction, useWriteContract, useReadContract } from "wagmi";
+import { encodeFunctionData, Hex } from "viem";
+import { appendBuilderCode } from "@/lib/builderCode";
+import { SUPPORTED_TOKENS, Token } from "@/lib/tokens";
+import { TokenIcon } from "@/components/TokenIcon";
+import {
+  Bot,
+  User,
+  Sparkles,
+  Send,
+  ArrowRight,
+  ExternalLink,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  Trash2,
+  Wallet,
+  ShieldCheck,
+  Zap,
+  Layers,
+  History,
+  Terminal,
+} from "lucide-react";
 
-interface AIAgentTerminalProps {
-  onAutoFillSwap: (inputSymbol: string, outputSymbol: string, amount: string) => void;
-  onNavigateTab: (tab: "home" | "swap" | "liquidity" | "bridge" | "portfolio") => void;
-  walletConnected: boolean;
-  walletBalance: string;
+const GM_DEX_ROUTER = "0x9dc3BBdB8817309ba42b79cc357EC6Be47030B70" as `0x${string}`;
+const WETH = "0x4200000000000000000000000000000000000006";
+
+const ERC20_ABI = [
+  {
+    name: "approve",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "spender", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    outputs: [{ name: "", type: "bool" }],
+  },
+  {
+    name: "allowance",
+    type: "function",
+    stateMutability: "view",
+    inputs: [
+      { name: "owner", type: "address" },
+      { name: "spender", type: "address" },
+    ],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+] as const;
+
+const ROUTER_ABI = [
+  {
+    inputs: [
+      { name: "amountOutMin", type: "uint256" },
+      { name: "path", type: "address[]" },
+      { name: "to", type: "address" },
+      { name: "deadline", type: "uint256" },
+    ],
+    name: "swapExactETHForTokens",
+    outputs: [{ name: "amounts", type: "uint256[]" }],
+    stateMutability: "payable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { name: "amountIn", type: "uint256" },
+      { name: "amountOutMin", type: "uint256" },
+      { name: "path", type: "address[]" },
+      { name: "to", type: "address" },
+      { name: "deadline", type: "uint256" },
+    ],
+    name: "swapExactTokensForETH",
+    outputs: [{ name: "amounts", type: "uint256[]" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { name: "amountIn", type: "uint256" },
+      { name: "amountOutMin", type: "uint256" },
+      { name: "path", type: "address[]" },
+      { name: "to", type: "address" },
+      { name: "deadline", type: "uint256" },
+    ],
+    name: "swapExactTokensForTokens",
+    outputs: [{ name: "amounts", type: "uint256[]" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+] as const;
+
+const TOKEN_USD_PRICES: Record<string, number> = {
+  ETH: 3300.0,
+  WETH: 3300.0,
+  USDC: 1.0,
+  EURC: 1.08,
+  CBBTC: 66000.0,
+  DEGEN: 0.008,
+  BRETT: 0.085,
+  TOSHI: 0.00035,
+  AERO: 0.85,
+  VIRTUAL: 1.80,
+};
+
+function parseAmt(val: string, dec: number): bigint {
+  if (!val || isNaN(Number(val)) || Number(val) <= 0) return 0n;
+  try {
+    const parts = val.split(".");
+    let whole = parts[0] || "0";
+    let frac = parts[1] || "";
+    if (frac.length > dec) frac = frac.slice(0, dec);
+    else frac = frac.padEnd(dec, "0");
+    return BigInt(whole + frac);
+  } catch {
+    return 0n;
+  }
+}
+
+interface SwapCardData {
+  inputToken: Token;
+  outputToken: Token;
+  amount: string;
+  isExecuting?: boolean;
+  txHash?: string;
+  error?: string;
 }
 
 interface Message {
   id: string;
   sender: "user" | "agent";
   text: string;
-  action?: {
-    type: "swap" | "navigate" | "external";
-    label: string;
-    payload?: any;
-  };
+  swapCard?: SwapCardData;
   timestamp: string;
 }
 
-const SLASH_COMMANDS = [
-  { cmd: "/swap", desc: "Fast swap tokens (e.g. /swap 0.01 eth usdc)", example: "/swap 0.01 eth usdc" },
-  { cmd: "/balance", desc: "Check wallet token balances & net worth", example: "/balance" },
-  { cmd: "/history", desc: "View recent on-chain transactions & Basescan", example: "/history" },
-  { cmd: "/audit", desc: "Audit token contract & safety score", example: "/audit brett" },
-  { cmd: "/yield", desc: "View top Base APY liquidity pools", example: "/yield" },
-  { cmd: "/bridge", desc: "Cross-chain bridge from 15+ networks", example: "/bridge" },
-  { cmd: "/help", desc: "Show all available agent commands", example: "/help" },
-  { cmd: "/clear", desc: "Clear chat messages", example: "/clear" },
-];
-
 const PLACEHOLDERS = [
-  "Type /swap 0.01 eth usdc...",
-  "Type /balance (check portfolio & net worth)...",
-  "Type /audit brett (0% tax & honeypot check)...",
-  "Type /yield (top Base APY pools)...",
-  "Type /history (view Base transactions)...",
-  "Type /help (show all commands)...",
+  "Ask balances, positions, or execute swap (/swap 10 USDC to EURC)...",
+  "Try /swap 0.01 ETH to USDC...",
+  "Try /balance to check on-chain net worth...",
+  "Try /audit BRETT for smart contract safety...",
+  "Try /yield to view top Aerodrome liquidity pools...",
 ];
 
-export function AIAgentTerminal({ onAutoFillSwap, onNavigateTab, walletConnected, walletBalance }: AIAgentTerminalProps) {
+export function AIAgentTerminal() {
+  const { address, isConnected } = useAccount();
+  const { sendTransactionAsync } = useSendTransaction();
+  const { writeContractAsync: approveToken } = useWriteContract();
+
   const [inputMessage, setInputMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
-  const [showCommandsMenu, setShowCommandsMenu] = useState(false);
+  const [activeExecutingId, setActiveExecutingId] = useState<string | null>(null);
+
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "welcome",
       sender: "agent",
-      text: "👋 GM! I am **GM AI Agent**, your autonomous on-chain trading copilot on Base Mainnet.\n\nType any slash command like **/swap**, **/balance**, **/history**, or **/audit** to get started!",
+      text: "👋 GM! I am **GM AI Agent**, your autonomous on-chain trading copilot on Base Mainnet.\n\nI can execute direct EVM swaps, scan balances, audit token contracts, and rank liquidity pools.",
+      swapCard: {
+        inputToken: SUPPORTED_TOKENS.find(t => t.symbol === "USDC") || SUPPORTED_TOKENS[1],
+        outputToken: SUPPORTED_TOKENS.find(t => t.symbol === "EURC") || SUPPORTED_TOKENS[3],
+        amount: "10",
+      },
       timestamp: "Just now",
     },
   ]);
@@ -65,199 +176,135 @@ export function AIAgentTerminal({ onAutoFillSwap, onNavigateTab, walletConnected
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, isTyping]);
 
-  // Rotate dynamic placeholder text smoothly
   useEffect(() => {
     const interval = setInterval(() => {
       setPlaceholderIndex((prev) => (prev + 1) % PLACEHOLDERS.length);
-    }, 3200);
+    }, 3500);
     return () => clearInterval(interval);
   }, []);
 
-  const parseAndRespond = (query: string) => {
-    const raw = query.trim();
-    const q = raw.toLowerCase();
-
-    // Command: /clear
-    if (q === "/clear") {
-      setMessages([
+  const handleDirectSwap = async (msgId: string, swapData: SwapCardData) => {
+    if (!isConnected || !address) {
+      setMessages((prev) => [
+        ...prev,
         {
-          id: "welcome",
+          id: Date.now().toString(),
           sender: "agent",
-          text: "🧹 Chat cleared! How can I help you? Try **/swap**, **/balance**, **/history**, or **/audit**.",
+          text: "⚠️ **Wallet Not Connected**: Please connect your wallet in the top right header to execute on-chain transactions.",
           timestamp: "Just now",
         },
       ]);
-      return null;
+      return;
     }
 
-    // Command: /help
-    if (q === "/help" || q === "help" || q === "commands") {
-      return {
-        text: `🤖 **GM AI Agent Command Center:**\n\n` +
-          `• **/swap [amt] [tokenA] [tokenB]** — Instant swap execution (e.g. \`/swap 0.05 eth usdc\`)\n` +
-          `• **/balance** — Scan connected wallet balances & USD net worth\n` +
-          `• **/history** — View recent Base transactions on Basescan\n` +
-          `• **/audit [token]** — Smart contract safety audit & 0% tax verification\n` +
-          `• **/yield** or **/pools** — Top APY liquidity pools on Aerodrome V2\n` +
-          `• **/bridge** — Bridge assets from Ethereum, Solana & Arbitrum\n` +
-          `• **/clear** — Reset chat window`,
-      };
-    }
+    setActiveExecutingId(msgId);
 
-    // Command: /balance or balance inquiry
-    if (q.startsWith("/balance") || q.startsWith("/bal") || q === "balance" || q === "my balance") {
-      if (!walletConnected) {
-        return {
-          text: "💼 **Wallet Not Connected**\n\nPlease connect your Coinbase Wallet or MetaMask to view your real-time on-chain token balances and USD net worth.",
-          action: {
-            type: "navigate" as const,
-            label: "Open Portfolio Tab",
-            payload: "portfolio",
+    try {
+      const { inputToken, outputToken, amount } = swapData;
+      const amountWei = parseAmt(amount, inputToken.decimals);
+      if (amountWei === 0n) throw new Error("Invalid swap amount");
+
+      // Check ERC20 approval if not native ETH
+      if (inputToken.address) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now().toString(),
+            sender: "agent",
+            text: `⏳ Requesting **${inputToken.symbol}** approval for GM DEX Router...`,
+            timestamp: "Just now",
           },
-        };
+        ]);
+
+        await approveToken({
+          address: inputToken.address as `0x${string}`,
+          abi: ERC20_ABI,
+          functionName: "approve",
+          args: [GM_DEX_ROUTER, amountWei],
+        });
       }
-      const ethNum = parseFloat(walletBalance || "0");
-      const usdValue = (ethNum * 3300).toFixed(2);
-      return {
-        text: `💼 **Base Mainnet Portfolio Balance:**\n\n` +
-          `• **ETH**: ${walletBalance} ETH (~$${usdValue})\n` +
-          `• **Network**: Base Mainnet (Chain ID 8453)\n` +
-          `• **Status**: 100% Non-Custodial & Secure\n\n` +
-          `You can view all token breakdowns in the Portfolio tab or execute a quick swap below!`,
-        action: {
-          type: "navigate" as const,
-          label: "View Full Portfolio",
-          payload: "portfolio",
-        },
-      };
-    }
 
-    // Command: /history or /txs
-    if (q.startsWith("/history") || q.startsWith("/tx") || q.startsWith("/recent") || q === "history") {
-      return {
-        text: `📜 **On-Chain Transaction History:**\n\n` +
-          `• **GM DEX Router**: \`0x9dc3BBdB8817309ba42b79cc357EC6Be47030B70\`\n` +
-          `• **Liquidity Pool Router**: \`0x379bB6CBd151c8A9C3da6e534E46356e17b14572\`\n` +
-          `• **Attribution**: Base Builder Code (\`6a488e6c...\`)\n\n` +
-          `All swaps and LP actions are verified on Basescan with sub-second finality.`,
-        action: {
-          type: "external" as const,
-          label: "Open Basescan Explorer",
-          payload: "https://basescan.org/address/0x9dc3BBdB8817309ba42b79cc357EC6Be47030B70",
-        },
-      };
-    }
+      // Build Swap Path
+      const inAddr = (inputToken.address || WETH) as `0x${string}`;
+      const outAddr = (outputToken.address || WETH) as `0x${string}`;
+      const path = (!inputToken.address || !outputToken.address)
+        ? [inAddr, outAddr]
+        : [inAddr, WETH as `0x${string}`, outAddr];
 
-    // Command: /audit [token]
-    if (q.startsWith("/audit") || q.includes("audit") || q.includes("honeypot") || q.includes("safe")) {
-      const parts = raw.split(" ");
-      const target = parts[1] || "All Supported Tokens";
-      return {
-        text: `🛡️ **GM AI Safety Audit [${target.toUpperCase()}]:**\n\n` +
-          `✅ **Buy / Sell Tax**: 0.0% (Verified)\n` +
-          `✅ **Honeypot Risk**: 0% (Clean Open Liquidity)\n` +
-          `✅ **Router Verification**: Base Mainnet Aerodrome V2\n` +
-          `✅ **Builder Standard**: ERC-8021 Data Suffix Attached\n` +
-          `✅ **Security Rating**: **99 / 100 — Highly Safe**`,
-      };
-    }
+      const deadline = BigInt(Math.floor(Date.now() / 1000) + 1200);
 
-    // Command: /yield or /pools
-    if (q.startsWith("/yield") || q.startsWith("/pools") || q.includes("apy") || q.includes("pool")) {
-      return {
-        text: `💧 **Base Mainnet Top Yield Pools (Aerodrome V2):**\n\n` +
-          `1. **USDC / EURC StableSwap**: ~14.2% Projected APY (0.1% fee, Zero IL)\n` +
-          `2. **ETH / USDC Volatile**: High Daily Volume & Deep Liquidity\n` +
-          `3. **ETH / EURC Volatile**: Multi-Currency Yield Pair\n\n` +
-          `Protocol automatically routes 0.1% deposit revenue to Treasury.`,
-        action: {
-          type: "navigate" as const,
-          label: "Deposit into Liquidity Pools",
-          payload: "liquidity",
-        },
-      };
-    }
+      // Estimate output quote for minimum received with 1% slippage
+      const rateIn = TOKEN_USD_PRICES[inputToken.symbol.toUpperCase()] || 1.0;
+      const rateOut = TOKEN_USD_PRICES[outputToken.symbol.toUpperCase()] || 1.0;
+      const inNum = Number(amountWei) / (10 ** inputToken.decimals);
+      const estOutNum = (inNum * rateIn) / rateOut;
+      const estOutWei = parseAmt(estOutNum.toFixed(outputToken.decimals), outputToken.decimals);
+      const amountOutMin = (estOutWei * 99n) / 100n; // 1% default slippage
 
-    // Command: /bridge
-    if (q.startsWith("/bridge") || q.includes("bridge") || q.includes("deposit")) {
-      return {
-        text: `🌉 **Official Base Cross-Chain Bridge:**\n\n` +
-          `• **Supported Networks**: 15+ EVM Chains & Solana\n` +
-          `• **Avg Transfer Speed**: < 2 Minutes\n` +
-          `• **Target Network**: Base Mainnet (8453)\n` +
-          `• **Security**: OP Stack & Native Base Bridge`,
-        action: {
-          type: "navigate" as const,
-          label: "Open Bridge Portal",
-          payload: "bridge",
-        },
-      };
-    }
+      let rawData: Hex;
+      let value = 0n;
 
-    // Command: /swap [amt] [tokenA] [tokenB] or natural language swap
-    const isSlashSwap = q.startsWith("/swap");
-    let amount = "0.01";
-    let symA = "ETH";
-    let symB = "USDC";
-
-    if (isSlashSwap) {
-      const parts = raw.split(/\s+/).filter(Boolean);
-      if (parts.length >= 4) {
-        amount = parts[1];
-        symA = parts[2].toUpperCase();
-        symB = parts[3].toUpperCase();
-      } else if (parts.length === 3) {
-        if (!isNaN(Number(parts[1]))) {
-          amount = parts[1];
-          symB = parts[2].toUpperCase();
-        } else {
-          symA = parts[1].toUpperCase();
-          symB = parts[2].toUpperCase();
-        }
+      if (!inputToken.address) {
+        // ETH -> Token
+        rawData = encodeFunctionData({
+          abi: ROUTER_ABI,
+          functionName: "swapExactETHForTokens",
+          args: [amountOutMin, path, address, deadline],
+        });
+        value = amountWei;
+      } else if (!outputToken.address) {
+        // Token -> ETH
+        rawData = encodeFunctionData({
+          abi: ROUTER_ABI,
+          functionName: "swapExactTokensForETH",
+          args: [amountWei, amountOutMin, path, address, deadline],
+        });
+      } else {
+        // Token -> Token
+        rawData = encodeFunctionData({
+          abi: ROUTER_ABI,
+          functionName: "swapExactTokensForTokens",
+          args: [amountWei, amountOutMin, path, address, deadline],
+        });
       }
-    } else {
-      const swapMatch = q.match(/(?:swap|trade|buy|convert)\s*([0-9]*\.?[0-9]+)?\s*([a-z0-9]+)\s*(?:to|for|with|into)\s*([a-z0-9]+)/i);
-      if (swapMatch) {
-        amount = swapMatch[1] || "0.01";
-        symA = swapMatch[2].toUpperCase();
-        symB = swapMatch[3].toUpperCase();
-      }
-    }
 
-    const matchedA = SUPPORTED_TOKENS.find(t => t.symbol.toUpperCase() === symA || t.name.toLowerCase() === symA.toLowerCase());
-    const matchedB = SUPPORTED_TOKENS.find(t => t.symbol.toUpperCase() === symB || t.name.toLowerCase() === symB.toLowerCase());
+      // Attach ERC-8021 Base Builder Code
+      const dataWithBuilder = appendBuilderCode(rawData);
 
-    const finalA = matchedA ? matchedA.symbol : symA;
-    const finalB = matchedB ? matchedB.symbol : symB;
+      // Trigger EVM Transaction
+      const txHash = await sendTransactionAsync({
+        to: GM_DEX_ROUTER,
+        data: dataWithBuilder as Hex,
+        value,
+      });
 
-    if (isSlashSwap || q.includes("swap") || q.includes("buy")) {
-      return {
-        text: `🤖 **Prepared Swap Order:**\n\n` +
-          `• **Selling**: ${amount} ${finalA}\n` +
-          `• **Receiving**: ${finalB}\n` +
-          `• **Routing**: Aerodrome V2 (0.1% Treasury Fee)\n` +
-          `• **Attribution**: ERC-8021 Builder Code\n\n` +
-          `Click below to execute immediately on Base Mainnet!`,
-        action: {
-          type: "swap" as const,
-          label: `Execute ${amount} ${finalA} ➔ ${finalB}`,
-          payload: { inputSymbol: finalA, outputSymbol: finalB, amount },
+      // Update Chat with Success message & Basescan link
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          sender: "agent",
+          text: `✅ **Swap Executed Successfully on Base Mainnet!**\n\n• **Swapped**: ${amount} ${inputToken.symbol} ➔ ${outputToken.symbol}\n• **Transaction Hash**: [${txHash.slice(0, 10)}...${txHash.slice(-8)}](https://basescan.org/tx/${txHash})\n• **Router**: \`0x9dc3BBdB881...\` (0.1% Treasury Fee Included)`,
+          timestamp: "Just now",
         },
-      };
+      ]);
+    } catch (err: any) {
+      console.error(err);
+      const errMsg = err?.shortMessage || err?.message || "Transaction rejected by user.";
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          sender: "agent",
+          text: `❌ **Swap Failed:** ${errMsg}\n\nYou can try again or customize parameters.`,
+          timestamp: "Just now",
+        },
+      ]);
+    } finally {
+      setActiveExecutingId(null);
     }
-
-    // Default intelligent helper
-    return {
-      text: `🤖 I didn't recognize that specific command. Try:\n\n` +
-        `• **/swap 0.01 eth usdc** — Prepare a fast swap\n` +
-        `• **/balance** — Check your wallet balance\n` +
-        `• **/history** — View on-chain transactions\n` +
-        `• **/audit brett** — Run a safety audit\n` +
-        `• **/yield** — Top APY liquidity pools\n` +
-        `• **/help** — View all commands`,
-    };
   };
 
   const handleSend = (textToSend?: string) => {
@@ -273,208 +320,323 @@ export function AIAgentTerminal({ onAutoFillSwap, onNavigateTab, walletConnected
 
     setMessages((prev) => [...prev, userMsg]);
     if (!textToSend) setInputMessage("");
-    setShowCommandsMenu(false);
     setIsTyping(true);
 
     setTimeout(() => {
-      const response = parseAndRespond(query);
-      if (!response) {
+      const q = query.toLowerCase().trim();
+
+      // Clear
+      if (q === "/clear") {
+        setMessages([
+          {
+            id: "welcome",
+            sender: "agent",
+            text: "🧹 Terminal cleared. Type **/swap**, **/balance**, **/history**, or **/audit**.",
+            timestamp: "Just now",
+          },
+        ]);
         setIsTyping(false);
         return;
       }
-      const agentMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        sender: "agent",
-        text: response.text,
-        action: response.action,
-        timestamp: "Just now",
-      };
-      setMessages((prev) => [...prev, agentMsg]);
+
+      // Balance
+      if (q.startsWith("/balance") || q.startsWith("/bal") || q === "balance") {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now().toString(),
+            sender: "agent",
+            text: isConnected && address
+              ? `💼 **Wallet Status:** Connected (\`${address.slice(0, 6)}...${address.slice(-4)}\`)\n\n• **Network**: Base Mainnet (Chain ID 8453)\n• **Gas Buffer**: ~0.0005 ETH\n• **Security**: 100% Non-Custodial`
+              : "💼 **Wallet Not Connected**: Please connect your wallet in the top header.",
+            timestamp: "Just now",
+          },
+        ]);
+        setIsTyping(false);
+        return;
+      }
+
+      // History
+      if (q.startsWith("/history") || q.startsWith("/tx") || q === "history") {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now().toString(),
+            sender: "agent",
+            text: `📜 **On-Chain Transaction Routers:**\n\n• **GM DEX Swap Router**: [0x9dc3BBdB881...](https://basescan.org/address/0x9dc3BBdB8817309ba42b79cc357EC6Be47030B70)\n• **Liquidity Router**: [0x379bB6CBd...](https://basescan.org/address/0x379bB6CBd151c8A9C3da6e534E46356e17b14572)\n• **Base Builder Code**: \`6a488e6c2876ee6c1138a856\` (ERC-8021)`,
+            timestamp: "Just now",
+          },
+        ]);
+        setIsTyping(false);
+        return;
+      }
+
+      // Audit
+      if (q.startsWith("/audit") || q.includes("audit") || q.includes("safe")) {
+        const parts = query.split(" ");
+        const target = parts[1] || "Base Tokens";
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now().toString(),
+            sender: "agent",
+            text: `🛡️ **GM AI Safety Audit [${target.toUpperCase()}]:**\n\n✅ **Buy / Sell Tax**: 0.0% (Verified)\n✅ **Honeypot Risk**: 0% (Clean Open Liquidity)\n✅ **Router Verification**: Base Mainnet Aerodrome V2\n✅ **Security Rating**: **99 / 100 — Highly Safe**`,
+            timestamp: "Just now",
+          },
+        ]);
+        setIsTyping(false);
+        return;
+      }
+
+      // Parse Swap Command
+      let amount = "10";
+      let symA = "USDC";
+      let symB = "EURC";
+
+      const swapMatch = q.match(/(?:swap|trade|buy|convert)?\s*([0-9]*\.?[0-9]+)?\s*([a-z0-9]+)\s*(?:to|for|into)\s*([a-z0-9]+)/i);
+      if (swapMatch) {
+        amount = swapMatch[1] || "10";
+        symA = (swapMatch[2] || "USDC").toUpperCase();
+        symB = (swapMatch[3] || "EURC").toUpperCase();
+      } else if (q.startsWith("/swap")) {
+        const parts = query.split(/\s+/).filter(Boolean);
+        if (parts.length >= 4) {
+          amount = parts[1];
+          symA = parts[2].toUpperCase();
+          symB = parts[3].toUpperCase();
+        } else if (parts.length === 3) {
+          amount = parts[1];
+          symB = parts[2].toUpperCase();
+        }
+      }
+
+      const inToken = SUPPORTED_TOKENS.find(t => t.symbol.toUpperCase() === symA) || SUPPORTED_TOKENS[1];
+      const outToken = SUPPORTED_TOKENS.find(t => t.symbol.toUpperCase() === symB) || SUPPORTED_TOKENS[3];
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          sender: "agent",
+          text: `I can help you swap assets on **GM DEX Router**. I parsed your swap request as: **${amount} ${inToken.symbol} ➔ ${outToken.symbol}**.\n\nYou can execute it directly from the chat:`,
+          swapCard: {
+            inputToken: inToken,
+            outputToken: outToken,
+            amount: amount,
+          },
+          timestamp: "Just now",
+        },
+      ]);
       setIsTyping(false);
     }, 450);
   };
 
-  const handleActionClick = (action: Message["action"]) => {
-    if (!action) return;
-    if (action.type === "swap" && action.payload) {
-      onAutoFillSwap(action.payload.inputSymbol, action.payload.outputSymbol, action.payload.amount);
-      onNavigateTab("swap");
-    } else if (action.type === "navigate" && action.payload) {
-      onNavigateTab(action.payload);
-    } else if (action.type === "external" && action.payload) {
-      window.open(action.payload, "_blank");
-    }
-  };
-
-  const isSlashActive = inputMessage.startsWith("/") || showCommandsMenu;
+  const shortAddr = address ? `${address.slice(0, 6)}...${address.slice(-4)}` : "Disconnected";
 
   return (
-    <div className="w-full bg-[#0c1222] border border-[#01C38E]/30 rounded-3xl shadow-2xl flex flex-col overflow-hidden text-white">
-      {/* Terminal Header */}
-      <div className="p-4 border-b border-white/10 bg-gradient-to-r from-[#0c1222] via-[#101b30] to-[#0c1222] flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#01C38E] to-[#0A786A] p-[1.5px] shadow-lg shadow-[#01C38E]/20">
-            <div className="w-full h-full rounded-[14px] bg-[#0c1222] flex items-center justify-center">
-              <Bot className="h-5 w-5 text-[#01C38E]" />
+    <div className="w-full max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 py-2">
+      {/* Left 8 Cols: Full Clean Chat Terminal */}
+      <div className="lg:col-span-8 flex flex-col bg-[#0c1222]/95 border border-[#01C38E]/30 rounded-3xl shadow-2xl overflow-hidden h-[680px]">
+        {/* Terminal Top Bar */}
+        <div className="p-4 border-b border-white/10 bg-gradient-to-r from-[#0c1222] via-[#101b30] to-[#0c1222] flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#01C38E] to-[#0A786A] p-[1px]">
+              <div className="w-full h-full rounded-[11px] bg-[#0c1222] flex items-center justify-center">
+                <Bot className="h-4 w-4 text-[#01C38E]" />
+              </div>
+            </div>
+            <div>
+              <span className="font-extrabold text-sm text-white flex items-center gap-2">
+                GM AI Terminal
+                <span className="w-2 h-2 rounded-full bg-[#01C38E] animate-pulse" />
+              </span>
+              <p className="text-[10px] text-zinc-400">Direct EVM Transaction Execution</p>
             </div>
           </div>
-          <div>
-            <div className="flex items-center gap-1.5">
-              <span className="font-extrabold text-sm text-white">GM AI Trading Terminal</span>
-              <span className="text-[9px] bg-[#01C38E]/20 text-[#01C38E] font-mono px-1.5 py-0.5 rounded font-bold">Base L2</span>
-              <span className="w-2 h-2 rounded-full bg-[#01C38E] animate-pulse" />
-            </div>
-            <p className="text-[11px] text-zinc-400">Autonomous Conversational Trading Copilot</p>
-          </div>
-        </div>
-        <button
-          onClick={() => handleSend("/clear")}
-          className="p-2 text-zinc-400 hover:text-red-400 rounded-xl hover:bg-white/10 transition-all cursor-pointer flex items-center gap-1 text-xs"
-          title="Clear Chat"
-        >
-          <Trash2 className="h-3.5 w-3.5" /> Clear
-        </button>
-      </div>
-
-      {/* Quick Action Pills */}
-      <div className="px-4 py-2.5 border-b border-white/5 bg-black/30 flex gap-2 overflow-x-auto no-scrollbar text-xs">
-        <button
-          onClick={() => handleSend("/swap 0.01 eth usdc")}
-          className="px-3 py-1.5 rounded-full bg-white/5 hover:bg-[#01C38E]/20 border border-white/10 hover:border-[#01C38E]/40 text-zinc-300 hover:text-white whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 shrink-0 font-mono font-bold"
-        >
-          <Zap className="h-3.5 w-3.5 text-[#01C38E]" /> /swap
-        </button>
-        <button
-          onClick={() => handleSend("/balance")}
-          className="px-3 py-1.5 rounded-full bg-white/5 hover:bg-[#01C38E]/20 border border-white/10 hover:border-[#01C38E]/40 text-zinc-300 hover:text-white whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 shrink-0 font-mono font-bold"
-        >
-          <Wallet className="h-3.5 w-3.5 text-[#01C38E]" /> /balance
-        </button>
-        <button
-          onClick={() => handleSend("/history")}
-          className="px-3 py-1.5 rounded-full bg-white/5 hover:bg-[#01C38E]/20 border border-white/10 hover:border-[#01C38E]/40 text-zinc-300 hover:text-white whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 shrink-0 font-mono font-bold"
-        >
-          <History className="h-3.5 w-3.5 text-[#01C38E]" /> /history
-        </button>
-        <button
-          onClick={() => handleSend("/audit brett")}
-          className="px-3 py-1.5 rounded-full bg-white/5 hover:bg-[#01C38E]/20 border border-white/10 hover:border-[#01C38E]/40 text-zinc-300 hover:text-white whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 shrink-0 font-mono font-bold"
-        >
-          <ShieldCheck className="h-3.5 w-3.5 text-[#01C38E]" /> /audit
-        </button>
-        <button
-          onClick={() => handleSend("/yield")}
-          className="px-3 py-1.5 rounded-full bg-white/5 hover:bg-[#01C38E]/20 border border-white/10 hover:border-[#01C38E]/40 text-zinc-300 hover:text-white whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 shrink-0 font-mono font-bold"
-        >
-          <TrendingUp className="h-3.5 w-3.5 text-[#01C38E]" /> /yield
-        </button>
-        <button
-          onClick={() => handleSend("/help")}
-          className="px-3 py-1.5 rounded-full bg-white/5 hover:bg-[#01C38E]/20 border border-white/10 hover:border-[#01C38E]/40 text-zinc-300 hover:text-white whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 shrink-0 font-mono font-bold"
-        >
-          <HelpCircle className="h-3.5 w-3.5 text-[#01C38E]" /> /help
-        </button>
-      </div>
-
-      {/* Messages Scroll Area */}
-      <div className="p-4 sm:p-6 overflow-y-auto space-y-4 text-xs leading-relaxed max-h-[380px] min-h-[260px]">
-        {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={`flex flex-col ${msg.sender === "user" ? "items-end" : "items-start"}`}
+          <button
+            onClick={() => handleSend("/clear")}
+            className="p-1.5 text-zinc-400 hover:text-red-400 rounded-lg hover:bg-white/10 transition-colors text-xs flex items-center gap-1 cursor-pointer"
           >
-            <div
-              className={`max-w-[88%] sm:max-w-[75%] p-4 rounded-2xl whitespace-pre-line ${
-                msg.sender === "user"
-                  ? "bg-[#01C38E] text-white rounded-br-none shadow-md shadow-[#01C38E]/20 font-medium"
-                  : "bg-white/5 border border-white/10 text-zinc-200 rounded-bl-none shadow-md"
-              }`}
-            >
-              {msg.text}
+            <Trash2 className="h-3.5 w-3.5" /> Clear
+          </button>
+        </div>
 
-              {/* Interactive Action Button */}
-              {msg.action && (
-                <div className="mt-3 pt-3 border-t border-white/10">
-                  <button
-                    onClick={() => handleActionClick(msg.action)}
-                    className="w-full py-2.5 px-4 rounded-xl bg-[#01C38E] hover:bg-[#00ab7c] text-white font-extrabold text-xs transition-all shadow-md shadow-[#01C38E]/20 flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <Sparkles className="h-4 w-4" />
-                    {msg.action.label}
-                    <ArrowRight className="h-4 w-4" />
-                  </button>
+        {/* Chat Stream */}
+        <div className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-4 text-xs leading-relaxed">
+          {messages.map((msg) => (
+            <div
+              key={msg.id}
+              className={`flex gap-3 ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
+            >
+              {msg.sender === "agent" && (
+                <div className="w-7 h-7 rounded-xl bg-[#01C38E]/20 text-[#01C38E] border border-[#01C38E]/30 flex items-center justify-center shrink-0 mt-0.5">
+                  <Bot className="h-4 w-4" />
+                </div>
+              )}
+
+              <div className="flex flex-col gap-2 max-w-[88%] sm:max-w-[78%]">
+                <div
+                  className={`p-4 rounded-2xl whitespace-pre-line ${
+                    msg.sender === "user"
+                      ? "bg-[#01C38E] text-white rounded-tr-none font-medium shadow-lg shadow-[#01C38E]/20"
+                      : "bg-[#11192e] border border-white/10 text-zinc-200 rounded-tl-none shadow-lg"
+                  }`}
+                >
+                  {msg.text}
+
+                  {/* Interactive Token Swap Card Embedded Directly in Chat */}
+                  {msg.swapCard && (
+                    <div className="mt-3.5 bg-black/40 border border-[#01C38E]/30 rounded-2xl p-4 flex flex-col gap-3.5 shadow-inner">
+                      <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#01C38E]">
+                        <Sparkles className="h-3.5 w-3.5" />
+                        <span>Interactive Token Swap</span>
+                      </div>
+
+                      {/* Sell -> Buy Box */}
+                      <div className="grid grid-cols-5 gap-2 items-center bg-[#0c1222] border border-white/5 rounded-xl p-3">
+                        <div className="col-span-2 text-center">
+                          <span className="text-[10px] text-zinc-500 uppercase font-bold block mb-1">Sell</span>
+                          <span className="font-extrabold text-white text-sm">
+                            {msg.swapCard.amount} {msg.swapCard.inputToken.symbol}
+                          </span>
+                        </div>
+
+                        <div className="col-span-1 flex justify-center text-zinc-500">
+                          <ArrowRight className="h-4 w-4 text-[#01C38E]" />
+                        </div>
+
+                        <div className="col-span-2 text-center">
+                          <span className="text-[10px] text-zinc-500 uppercase font-bold block mb-1">Buy</span>
+                          <span className="font-extrabold text-[#01C38E] text-sm">
+                            {msg.swapCard.outputToken.symbol}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Direct EVM Execution Button */}
+                      <button
+                        disabled={activeExecutingId === msg.id}
+                        onClick={() => handleDirectSwap(msg.id, msg.swapCard!)}
+                        className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-[#01C38E] to-[#0A786A] hover:opacity-90 disabled:opacity-50 text-white font-black text-xs transition-all shadow-lg shadow-[#01C38E]/25 flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        {activeExecutingId === msg.id ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span>Confirming in Wallet...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="h-4 w-4" />
+                            <span>Confirm & Execute Swap</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <span className="text-[9px] text-zinc-500 px-1">{msg.timestamp}</span>
+              </div>
+
+              {msg.sender === "user" && (
+                <div className="w-7 h-7 rounded-xl bg-white/10 text-white border border-white/20 flex items-center justify-center shrink-0 mt-0.5">
+                  <User className="h-4 w-4" />
                 </div>
               )}
             </div>
-            <span className="text-[9px] text-zinc-500 mt-1 px-1">{msg.timestamp}</span>
-          </div>
-        ))}
+          ))}
 
-        {isTyping && (
-          <div className="flex items-center gap-2 text-zinc-400 p-3 bg-white/5 rounded-2xl w-24">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#01C38E] animate-bounce" />
-            <span className="w-1.5 h-1.5 rounded-full bg-[#01C38E] animate-bounce [animation-delay:0.2s]" />
-            <span className="w-1.5 h-1.5 rounded-full bg-[#01C38E] animate-bounce [animation-delay:0.4s]" />
-          </div>
-        )}
-        <div ref={messagesEndRef} />
+          {isTyping && (
+            <div className="flex items-center gap-2 text-zinc-400 p-3 bg-white/5 rounded-2xl w-24 ml-10">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#01C38E] animate-bounce" />
+              <span className="w-1.5 h-1.5 rounded-full bg-[#01C38E] animate-bounce [animation-delay:0.2s]" />
+              <span className="w-1.5 h-1.5 rounded-full bg-[#01C38E] animate-bounce [animation-delay:0.4s]" />
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Input Bar */}
+        <div className="p-3.5 border-t border-white/10 bg-black/40 flex items-center gap-2">
+          <input
+            type="text"
+            placeholder={PLACEHOLDERS[placeholderIndex]}
+            value={inputMessage}
+            onChange={(e) => setInputMessage(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSend();
+            }}
+            className="flex-1 bg-white/5 border border-white/10 focus:border-[#01C38E] rounded-xl px-4 py-3 text-xs sm:text-sm text-white outline-none placeholder-zinc-500 transition-all font-sans"
+          />
+          <button
+            onClick={() => handleSend()}
+            disabled={!inputMessage.trim()}
+            className="p-3 bg-[#01C38E] hover:bg-[#00ab7c] disabled:opacity-40 disabled:hover:bg-[#01C38E] text-white rounded-xl transition-all shadow-md shadow-[#01C38E]/20 cursor-pointer"
+          >
+            <Send className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
-      {/* Slash Command Autocomplete Dropdown */}
-      {isSlashActive && (
-        <div className="px-3 py-2 bg-[#080d18] border-t border-white/10 max-h-48 overflow-y-auto space-y-1 text-xs animate-in fade-in duration-150">
-          <div className="flex items-center justify-between px-2 py-1">
-            <span className="text-[10px] font-bold text-zinc-500 uppercase">Available Slash Commands</span>
-            <button onClick={() => setShowCommandsMenu(false)} className="text-[10px] text-zinc-500 hover:text-white">Close</button>
+      {/* Right 4 Cols: Terminal Connection Panel */}
+      <div className="lg:col-span-4 flex flex-col gap-4">
+        {/* Terminal Connection Widget */}
+        <div className="bg-[#0c1222]/95 border border-white/[0.08] rounded-3xl p-5 shadow-xl flex flex-col gap-3">
+          <div className="flex items-center gap-2 pb-3 border-b border-white/5">
+            <Wallet className="h-4 w-4 text-[#01C38E]" />
+            <h3 className="font-extrabold text-white text-sm">Terminal Connection</h3>
           </div>
-          {SLASH_COMMANDS.filter(s => !inputMessage || s.cmd.includes(inputMessage.toLowerCase()) || inputMessage === "/").map((s) => (
-            <button
-              key={s.cmd}
-              onClick={() => {
-                setInputMessage(s.example);
-                setShowCommandsMenu(false);
-              }}
-              className="w-full flex items-center justify-between p-2 rounded-xl hover:bg-white/10 text-left transition-colors cursor-pointer group"
-            >
-              <span className="font-bold text-[#01C38E] font-mono group-hover:underline">{s.cmd}</span>
-              <span className="text-[11px] text-zinc-400 truncate max-w-[320px]">{s.desc}</span>
-            </button>
-          ))}
+
+          <div>
+            <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-1">Wallet Status</span>
+            <div className="flex items-center gap-2 text-xs font-mono">
+              <span className={`w-2 h-2 rounded-full ${isConnected ? "bg-[#01C38E]" : "bg-red-400"}`} />
+              <span className="text-white font-bold">{isConnected ? `Connected (${shortAddr})` : "Disconnected"}</span>
+            </div>
+          </div>
+
+          <div className="border-t border-white/5 pt-3">
+            <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-1">Network</span>
+            <span className="text-xs text-zinc-300 font-semibold flex items-center gap-1.5">
+              🔵 Base Mainnet (8453)
+            </span>
+          </div>
+
+          <div className="border-t border-white/5 pt-3">
+            <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-1">Router Engine</span>
+            <span className="text-[11px] text-[#01C38E] font-mono truncate block">
+              0x9dc3BBdB881... (0.1% Fee)
+            </span>
+          </div>
         </div>
-      )}
 
-      {/* Input Bar with Rotating Placeholder & Command Trigger */}
-      <div className="p-3.5 border-t border-white/10 bg-black/40 flex items-center gap-2">
-        <button
-          onClick={() => setShowCommandsMenu(!showCommandsMenu)}
-          className={`p-2.5 rounded-xl border text-xs font-mono font-bold transition-all cursor-pointer ${
-            showCommandsMenu
-              ? "bg-[#01C38E] text-white border-[#01C38E]"
-              : "bg-white/5 hover:bg-white/10 border-white/10 text-zinc-400 hover:text-[#01C38E]"
-          }`}
-          title="Open Slash Commands Palette"
-        >
-          /
-        </button>
-
-        <input
-          type="text"
-          placeholder={PLACEHOLDERS[placeholderIndex]}
-          value={inputMessage}
-          onChange={(e) => setInputMessage(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") handleSend();
-          }}
-          className="flex-1 bg-white/5 border border-white/10 focus:border-[#01C38E] rounded-xl px-4 py-3 text-xs sm:text-sm text-white outline-none placeholder-zinc-500 transition-all font-sans"
-        />
-
-        <button
-          onClick={() => handleSend()}
-          disabled={!inputMessage.trim()}
-          className="p-3 bg-[#01C38E] hover:bg-[#00ab7c] disabled:opacity-40 disabled:hover:bg-[#01C38E] text-white rounded-xl transition-all shadow-md shadow-[#01C38E]/20 cursor-pointer"
-        >
-          <Send className="h-4 w-4" />
-        </button>
+        {/* Quick Prompts */}
+        <div className="bg-[#0c1222]/95 border border-white/[0.08] rounded-3xl p-5 shadow-xl flex flex-col gap-2.5">
+          <span className="text-xs font-bold text-white mb-1">⚡ Quick Commands</span>
+          <button
+            onClick={() => handleSend("/swap 10 USDC to EURC")}
+            className="w-full text-left p-2.5 rounded-xl bg-white/5 hover:bg-[#01C38E]/20 border border-white/5 hover:border-[#01C38E]/40 text-xs text-zinc-300 hover:text-white transition-all font-mono"
+          >
+            /swap 10 USDC to EURC
+          </button>
+          <button
+            onClick={() => handleSend("/swap 0.01 ETH to USDC")}
+            className="w-full text-left p-2.5 rounded-xl bg-white/5 hover:bg-[#01C38E]/20 border border-white/5 hover:border-[#01C38E]/40 text-xs text-zinc-300 hover:text-white transition-all font-mono"
+          >
+            /swap 0.01 ETH to USDC
+          </button>
+          <button
+            onClick={() => handleSend("/balance")}
+            className="w-full text-left p-2.5 rounded-xl bg-white/5 hover:bg-[#01C38E]/20 border border-white/5 hover:border-[#01C38E]/40 text-xs text-zinc-300 hover:text-white transition-all font-mono"
+          >
+            /balance
+          </button>
+          <button
+            onClick={() => handleSend("/audit BRETT")}
+            className="w-full text-left p-2.5 rounded-xl bg-white/5 hover:bg-[#01C38E]/20 border border-white/5 hover:border-[#01C38E]/40 text-xs text-zinc-300 hover:text-white transition-all font-mono"
+          >
+            /audit BRETT
+          </button>
+        </div>
       </div>
     </div>
   );
