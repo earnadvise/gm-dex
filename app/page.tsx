@@ -31,6 +31,7 @@ import {
   Search,
   Plus,
   Trash2,
+  Bot,
 } from "lucide-react";
 
 // ─── Wallet Button ───────────────────────────────────────────────────────────
@@ -374,8 +375,8 @@ export default function Home() {
     return true;
   });
 
-  // Tabs: 'home', 'swap', 'liquidity', 'bridge', or 'portfolio'
-  const [activeTab, setActiveTab] = useState<"home" | "swap" | "liquidity" | "bridge" | "portfolio">("home");
+  // Tabs: 'home', 'swap', 'liquidity', 'bridge', 'portfolio', or 'ai-agent'
+  const [activeTab, setActiveTab] = useState<"home" | "swap" | "liquidity" | "bridge" | "portfolio" | "ai-agent">("home");
 
   // Slippage & Settings State (Option 4)
   const [slippage, setSlippage] = useState<number>(0.5); // Default 0.5%
@@ -1289,6 +1290,16 @@ export default function Home() {
               >
                 Portfolio
               </button>
+              <button
+                onClick={() => { setActiveTab("ai-agent"); setError(""); setTxHash(""); }}
+                className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${
+                  activeTab === "ai-agent" ? "bg-gradient-to-r from-[#01C38E] to-[#0A786A] text-white shadow-md shadow-[#01C38E]/20 font-extrabold" : "text-zinc-400 hover:text-white"
+                }`}
+              >
+                <Bot className="h-3.5 w-3.5 text-[#01C38E]" />
+                AI Agent
+                <span className="w-1.5 h-1.5 rounded-full bg-[#01C38E] animate-ping" />
+              </button>
             </nav>
           </div>
           <WalletButton onConnectClick={() => setShowConnectModal(true)} />
@@ -1525,6 +1536,13 @@ export default function Home() {
                       <ArrowRightLeft className="h-5 w-5 text-[#01C38E]" /> Swap Tokens
                     </span>
                     <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setActiveTab("ai-agent")}
+                        className="px-2 py-1 rounded-xl bg-gradient-to-r from-[#01C38E]/20 to-[#0A786A]/20 hover:from-[#01C38E]/30 hover:to-[#0A786A]/30 border border-[#01C38E]/30 text-[#01C38E] text-[11px] font-extrabold flex items-center gap-1 transition-all cursor-pointer shadow-sm"
+                        title="Open GM AI Agent"
+                      >
+                        <Bot className="h-3.5 w-3.5" /> Ask AI
+                      </button>
                       <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-[#01C38E]/10 border border-[#01C38E]/20 text-[#01C38E]">
                         {customSlippage ? `${customSlippage}%` : `${slippage}%`} Slippage
                       </span>
@@ -1960,8 +1978,8 @@ export default function Home() {
               </div>
             </div>
           </div>
-        ) : (
-          /* Portfolio Tab (AI-Powered) */
+        ) : activeTab === "portfolio" ? (
+          /* Portfolio Tab */
           <div className="w-full max-w-4xl mx-auto flex flex-col gap-6">
             {/* Header / Net Worth Banner */}
             <div className="bg-gradient-to-r from-[#0f172a] via-[#131c31] to-[#0f172a] border border-white/[0.08] rounded-3xl p-6 sm:p-8 backdrop-blur-2xl shadow-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 relative overflow-hidden">
@@ -2078,6 +2096,96 @@ export default function Home() {
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* Dedicated AI Agent Copilot Screen */
+          <div className="w-full max-w-4xl mx-auto flex flex-col gap-6 py-2">
+            {/* AI Agent Hero Banner */}
+            <div className="bg-gradient-to-r from-[#0c1222] via-[#101b30] to-[#0c1222] border border-[#01C38E]/30 rounded-3xl p-6 sm:p-8 backdrop-blur-2xl shadow-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-[#01C38E]/10 rounded-full blur-3xl pointer-events-none" />
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="p-2 rounded-xl bg-[#01C38E]/20 text-[#01C38E]">
+                    <Bot className="h-6 w-6 animate-bounce-short" />
+                  </div>
+                  <span className="text-xs text-[#01C38E] font-extrabold uppercase tracking-wider bg-[#01C38E]/10 px-2.5 py-1 rounded-full border border-[#01C38E]/20">
+                    Autonomous On-Chain Agent
+                  </span>
+                </div>
+                <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
+                  GM AI Trading Agent
+                </h1>
+                <p className="text-xs sm:text-sm text-zinc-400 mt-1 max-w-lg">
+                  Execute conversational token swaps, audit smart contracts, and discover top-yielding Base pools with autonomous AI copilot intelligence.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => handleAutoFillSwap("ETH", "USDC", "0.01")}
+                  className="px-4 py-2.5 rounded-2xl bg-[#01C38E] hover:bg-[#00ab7c] text-white font-extrabold text-xs transition-all shadow-lg shadow-[#01C38E]/20 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Zap className="h-3.5 w-3.5" /> Fast Swap 0.01 ETH
+                </button>
+              </div>
+            </div>
+
+            {/* 3 AI Feature Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div
+                onClick={() => handleAutoFillSwap("ETH", "USDC", "0.01")}
+                className="p-5 rounded-3xl bg-[#0f172a]/90 border border-white/[0.08] hover:border-[#01C38E]/40 transition-all cursor-pointer group shadow-xl flex flex-col justify-between"
+              >
+                <div>
+                  <div className="p-3 rounded-2xl bg-[#01C38E]/10 text-[#01C38E] w-fit mb-3 group-hover:scale-110 transition-transform">
+                    <ArrowRightLeft className="h-6 w-6" />
+                  </div>
+                  <h3 className="font-bold text-white text-base">Natural Language Swaps</h3>
+                  <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
+                    Type commands like "Swap 0.05 ETH to DEGEN" to automatically configure optimum routing.
+                  </p>
+                </div>
+                <span className="text-xs font-bold text-[#01C38E] mt-4 flex items-center gap-1">
+                  Try Swap ➔
+                </span>
+              </div>
+
+              <div
+                onClick={() => setActiveTab("liquidity")}
+                className="p-5 rounded-3xl bg-[#0f172a]/90 border border-white/[0.08] hover:border-[#01C38E]/40 transition-all cursor-pointer group shadow-xl flex flex-col justify-between"
+              >
+                <div>
+                  <div className="p-3 rounded-2xl bg-[#01C38E]/10 text-[#01C38E] w-fit mb-3 group-hover:scale-110 transition-transform">
+                    <TrendingUp className="h-6 w-6" />
+                  </div>
+                  <h3 className="font-bold text-white text-base">AI Yield Optimizer</h3>
+                  <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
+                    Automatically scans Base liquidity pools to highlight maximum APY stable and volatile pairs.
+                  </p>
+                </div>
+                <span className="text-xs font-bold text-[#01C38E] mt-4 flex items-center gap-1">
+                  Explore Yields ➔
+                </span>
+              </div>
+
+              <div
+                onClick={() => setActiveTab("portfolio")}
+                className="p-5 rounded-3xl bg-[#0f172a]/90 border border-white/[0.08] hover:border-[#01C38E]/40 transition-all cursor-pointer group shadow-xl flex flex-col justify-between"
+              >
+                <div>
+                  <div className="p-3 rounded-2xl bg-[#01C38E]/10 text-[#01C38E] w-fit mb-3 group-hover:scale-110 transition-transform">
+                    <ShieldCheck className="h-6 w-6" />
+                  </div>
+                  <h3 className="font-bold text-white text-base">Contract Safety Audit</h3>
+                  <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
+                    Evaluates token contracts on Base for buy/sell taxes, honeypots, and non-custodial safety.
+                  </p>
+                </div>
+                <span className="text-xs font-bold text-[#01C38E] mt-4 flex items-center gap-1">
+                  Audit Portfolio ➔
+                </span>
               </div>
             </div>
           </div>
@@ -2429,6 +2537,16 @@ export default function Home() {
         >
           <Wallet className="h-5 w-5" />
           <span className="text-[10px]">Portfolio</span>
+        </button>
+
+        <button
+          onClick={() => { setActiveTab("ai-agent"); setError(""); setTxHash(""); }}
+          className={`flex flex-col items-center gap-1 py-1.5 px-3 rounded-xl transition-all cursor-pointer ${
+            activeTab === "ai-agent" ? "text-[#01C38E] font-extrabold scale-105" : "text-zinc-400 hover:text-white font-medium"
+          }`}
+        >
+          <Bot className="h-5 w-5" />
+          <span className="text-[10px]">AI Agent</span>
         </button>
       </nav>
 
