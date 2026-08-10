@@ -142,6 +142,30 @@ export function AIAgentTerminal() {
     query: { refetchInterval: 3000 },
   });
 
+  const { data: usdcBalanceData } = useBalance({
+    address,
+    token: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+    query: { refetchInterval: 3000 },
+  });
+
+  const { data: usdtBalanceData } = useBalance({
+    address,
+    token: "0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2",
+    query: { refetchInterval: 3000 },
+  });
+
+  const { data: eurcBalanceData } = useBalance({
+    address,
+    token: "0x60a3E35Cc302bFA44Cb288Bc5a4F316Fdb1adb42",
+    query: { refetchInterval: 3000 },
+  });
+
+  const { data: cbBtcBalanceData } = useBalance({
+    address,
+    token: "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf",
+    query: { refetchInterval: 3000 },
+  });
+
   const [inputMessage, setInputMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
@@ -352,18 +376,32 @@ export function AIAgentTerminal() {
         const ethVal = ethBalanceData ? parseFloat(ethBalanceData.formatted || "0").toFixed(4) : "0.0000";
         const ethUsd = ethBalanceData ? (parseFloat(ethBalanceData.formatted || "0") * 3300).toFixed(2) : "0.00";
 
+        const usdcVal = usdcBalanceData ? parseFloat(usdcBalanceData.formatted || "0").toFixed(2) : "0.00";
+        const usdtVal = usdtBalanceData ? parseFloat(usdtBalanceData.formatted || "0").toFixed(2) : "0.00";
+        const eurcVal = eurcBalanceData ? parseFloat(eurcBalanceData.formatted || "0").toFixed(2) : "0.00";
+        const cbBtcVal = cbBtcBalanceData ? parseFloat(cbBtcBalanceData.formatted || "0").toFixed(6) : "0.000000";
+
+        const totalUsd = (
+          parseFloat(ethUsd) +
+          parseFloat(usdcVal) +
+          parseFloat(usdtVal) +
+          parseFloat(eurcVal) * 1.08 +
+          parseFloat(cbBtcVal) * 66000
+        ).toFixed(2);
+
         setMessages((prev) => [
           ...prev,
           {
             id: Date.now().toString(),
             sender: "agent",
-            text: `💼 **Wallet Token Balances (${address.slice(0, 6)}...${address.slice(-4)}):**\n\n` +
+            text: `💼 **On-Chain Token Balances (${address.slice(0, 6)}...${address.slice(-4)}):**\n\n` +
               `• **ETH**: ${ethVal} ETH (~$${ethUsd} USD)\n` +
-              `• **USDC**: 0.00 USDC (~$0.00 USD)\n` +
-              `• **EURC**: 0.00 EURC (~$0.00 USD)\n` +
-              `• **cbBTC**: 0.0000 cbBTC (~$0.00 USD)\n` +
+              `• **USDC**: ${usdcVal} USDC (~$${usdcVal} USD)\n` +
+              `• **USDT**: ${usdtVal} USDT (~$${usdtVal} USD)\n` +
+              `• **EURC**: ${eurcVal} EURC (~$${(parseFloat(eurcVal) * 1.08).toFixed(2)} USD)\n` +
+              `• **cbBTC**: ${cbBtcVal} cbBTC (~$${(parseFloat(cbBtcVal) * 66000).toFixed(2)} USD)\n` +
               `• **Network**: Base Mainnet (Chain ID 8453)\n` +
-              `• **Est. Total Value**: ~$${ethUsd} USD\n\n` +
+              `• **Est. Total Value**: ~$${totalUsd} USD\n\n` +
               `Type **/swap [amount] [token] to [token]** to execute a trade instantly!`,
             timestamp: "Just now",
           },
