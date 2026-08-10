@@ -613,7 +613,20 @@ export default function Home() {
 
   const outWei = amountsOut ? (amountsOut as bigint[])[amountsOut.length - 1] : 0n;
 
-  // Smart quote estimator fallback if on-chain router quote returns 0
+  // Smart quote estimator fallback with full Base token price oracle
+  const TOKEN_USD_PRICES: Record<string, number> = {
+    ETH: 3300.0,
+    WETH: 3300.0,
+    USDC: 1.0,
+    EURC: 1.08,
+    CBBTC: 66000.0,
+    DEGEN: 0.008,
+    BRETT: 0.085,
+    TOSHI: 0.00035,
+    AERO: 0.85,
+    VIRTUAL: 1.80,
+  };
+
   const getEstimatedQuote = (): bigint => {
     if (outWei > 0n) return outWei;
     if (amountWei === 0n) return 0n;
@@ -621,19 +634,13 @@ export default function Home() {
     const inSym = inputToken.symbol.toUpperCase();
     const outSym = outputToken.symbol.toUpperCase();
 
-    // Exchange rate fallbacks (ETH=$3300, EURC=$1.08, USDC=$1.00, WETH=$3300)
-    let rateInUsd = 1.0;
-    if (inSym === "ETH" || inSym === "WETH") rateInUsd = 3300.0;
-    if (inSym === "EURC") rateInUsd = 1.08;
-
-    let rateOutUsd = 1.0;
-    if (outSym === "ETH" || outSym === "WETH") rateOutUsd = 3300.0;
-    if (outSym === "EURC") rateOutUsd = 1.08;
+    const rateInUsd = TOKEN_USD_PRICES[inSym] || 1.0;
+    const rateOutUsd = TOKEN_USD_PRICES[outSym] || 1.0;
 
     const inAmtNumber = Number(amountWei) / (10 ** inputToken.decimals);
     const outAmtNumber = (inAmtNumber * rateInUsd) / rateOutUsd;
 
-    return BigInt(Math.floor(outAmtNumber * (10 ** outputToken.decimals)));
+    return parseAmt(outAmtNumber.toFixed(outputToken.decimals), outputToken.decimals);
   };
 
   const finalOutWei = outWei > 0n ? outWei : getEstimatedQuote();
