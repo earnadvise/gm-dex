@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useAccount, useSendTransaction, useWriteContract } from "wagmi";
+import { useAccount, useSendTransaction, useWriteContract, useBalance } from "wagmi";
 import { encodeFunctionData, Hex } from "viem";
 import { appendBuilderCode } from "@/lib/builderCode";
 import { SUPPORTED_TOKENS, Token } from "@/lib/tokens";
@@ -86,6 +86,7 @@ const TOKEN_USD_PRICES: Record<string, number> = {
   ETH: 3300.0,
   WETH: 3300.0,
   USDC: 1.0,
+  USDT: 1.0,
   EURC: 1.08,
   CBBTC: 66000.0,
   DEGEN: 0.008,
@@ -136,6 +137,10 @@ export function AIAgentTerminal() {
   const { address, isConnected } = useAccount();
   const { sendTransactionAsync } = useSendTransaction();
   const { writeContractAsync: approveToken } = useWriteContract();
+  const { data: ethBalanceData } = useBalance({
+    address,
+    query: { refetchInterval: 3000 },
+  });
 
   const [inputMessage, setInputMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -330,14 +335,36 @@ export function AIAgentTerminal() {
 
       // Balance
       if (q.startsWith("/balance") || q.startsWith("/bal") || q === "balance") {
+        if (!isConnected || !address) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: Date.now().toString(),
+              sender: "agent",
+              text: "💼 **Wallet Not Connected**: Please connect your wallet in the top header to view your live token balances.",
+              timestamp: "Just now",
+            },
+          ]);
+          setIsTyping(false);
+          return;
+        }
+
+        const ethVal = ethBalanceData ? parseFloat(ethBalanceData.formatted || "0").toFixed(4) : "0.0000";
+        const ethUsd = ethBalanceData ? (parseFloat(ethBalanceData.formatted || "0") * 3300).toFixed(2) : "0.00";
+
         setMessages((prev) => [
           ...prev,
           {
             id: Date.now().toString(),
             sender: "agent",
-            text: isConnected && address
-              ? `💼 **Wallet Status:** Connected (\`${address.slice(0, 6)}...${address.slice(-4)}\`)\n\n• **Network**: Base Mainnet (Chain ID 8453)\n• **Security**: 100% Non-Custodial`
-              : "💼 **Wallet Not Connected**: Please connect your wallet in the top header.",
+            text: `💼 **Wallet Token Balances (${address.slice(0, 6)}...${address.slice(-4)}):**\n\n` +
+              `• **ETH**: ${ethVal} ETH (~$${ethUsd} USD)\n` +
+              `• **USDC**: 0.00 USDC (~$0.00 USD)\n` +
+              `• **EURC**: 0.00 EURC (~$0.00 USD)\n` +
+              `• **cbBTC**: 0.0000 cbBTC (~$0.00 USD)\n` +
+              `• **Network**: Base Mainnet (Chain ID 8453)\n` +
+              `• **Est. Total Value**: ~$${ethUsd} USD\n\n` +
+              `Type **/swap [amount] [token] to [token]** to execute a trade instantly!`,
             timestamp: "Just now",
           },
         ]);
@@ -377,30 +404,32 @@ export function AIAgentTerminal() {
         return;
       }
 
+      // Clean query: strip leading "/" if any (e.g. "/0.001 eth to usdt" -> "0.001 eth to usdt")
+      const cleanQ = q.replace(/^\/+/, "").replace(/^swap\s+/i, "").trim();
+
       // Parse Swap Command
       let amount = "10";
-      let symA = "USDC";
-      let symB = "EURC";
+      let symA = "ETH";
+      let symB = "USDT";
 
-      const swapMatch = q.match(/(?:swap|trade|buy|convert)?\s*([0-9]*\.?[0-9]+)?\s*([a-z0-9]+)\s*(?:to|for|into)\s*([a-z0-9]+)/i);
+      const swapMatch = cleanQ.match(/^([0-9]*\.?[0-9]+)?\s*([a-z0-9]+)\s*(?:to|for|into|\s)\s*([a-z0-9]+)/i);
       if (swapMatch) {
         amount = swapMatch[1] || "10";
-        symA = (swapMatch[2] || "USDC").toUpperCase();
-        symB = (swapMatch[3] || "EURC").toUpperCase();
-      } else if (q.startsWith("/swap")) {
-        const parts = query.split(/\s+/).filter(Boolean);
-        if (parts.length >= 4) {
-          amount = parts[1];
-          symA = parts[2].toUpperCase();
-          symB = parts[3].toUpperCase();
-        } else if (parts.length === 3) {
-          amount = parts[1];
-          symB = parts[2].toUpperCase();
-        }
+        symA = (swapMatch[2] || "ETH").toUpperCase();
+        symB = (swapMatch[3] || "USDT").toUpperCase();
       }
 
-      const inToken = SUPPORTED_TOKENS.find(t => t.symbol.toUpperCase() === symA) || SUPPORTED_TOKENS[1];
-      const outToken = SUPPORTED_TOKENS.find(t => t.symbol.toUpperCase() === symB) || SUPPORTED_TOKENS[3];
+      // Exact token matching with alias support (e.g. BTC -> cbBTC, WETH -> ETH, USDT -> USDT)
+      const resolveToken = (symbol: string, defaultToken: Token): Token => {
+        const s = symbol.toUpperCase();
+        if (s === "BTC" || s === "WBTC") return SUPPORTED_TOKENS.find(t => t.symbol === "cbBTC") || defaultToken;
+        if (s === "WETH") return SUPPORTED_TOKENS.find(t => t.symbol === "ETH") || defaultToken;
+        const found = SUPPORTED_TOKENS.find(t => t.symbol.toUpperCase() === s || t.name.toLowerCase() === symbol.toLowerCase());
+        return found || defaultToken;
+      };
+
+      const inToken = resolveToken(symA, SUPPORTED_TOKENS.find(t => t.symbol === "ETH") || SUPPORTED_TOKENS[0]);
+      const outToken = resolveToken(symB, SUPPORTED_TOKENS.find(t => t.symbol === "USDT") || SUPPORTED_TOKENS.find(t => t.symbol === "USDC") || SUPPORTED_TOKENS[1]);
 
       const rateIn = TOKEN_USD_PRICES[inToken.symbol.toUpperCase()] || 1.0;
       const rateOut = TOKEN_USD_PRICES[outToken.symbol.toUpperCase()] || 1.0;

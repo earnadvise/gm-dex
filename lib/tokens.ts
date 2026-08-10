@@ -88,4 +88,13 @@ export const VIRTUAL: Token = {
   image: "/tokens/virtual.svg",
 };
 
-export const SUPPORTED_TOKENS = [ETH, USDC, cbBTC, EURC, DEGEN, BRETT, TOSHI, AERO, VIRTUAL];
+export const USDT: Token = {
+  address: "0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2",
+  chainId: 8453,
+  decimals: 6,
+  name: "Tether USD",
+  symbol: "USDT",
+  image: "/tokens/usdt.svg",
+};
+
+export const SUPPORTED_TOKENS = [ETH, USDC, USDT, cbBTC, EURC, DEGEN, BRETT, TOSHI, AERO, VIRTUAL];
