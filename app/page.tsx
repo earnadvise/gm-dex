@@ -7,6 +7,7 @@ import { appendBuilderCode, BUILDER_CODE } from "@/lib/builderCode";
 import { SUPPORTED_TOKENS } from "@/lib/tokens";
 import { TokenIcon } from "@/components/TokenIcon";
 import { AIAgentCopilot } from "@/components/AIAgentCopilot";
+import { AIAgentTerminal } from "@/components/AIAgentTerminal";
 import {
   ArrowRightLeft,
   ArrowRight,
@@ -2140,6 +2141,14 @@ export default function Home() {
                 </button>
               </div>
             </div>
+
+            {/* Embedded Live AI Agent Terminal with Rotating Placeholders & Slash Commands */}
+            <AIAgentTerminal
+              onAutoFillSwap={handleAutoFillSwap}
+              onNavigateTab={(tab) => { setActiveTab(tab); setError(""); setTxHash(""); }}
+              walletConnected={isConnected}
+              walletBalance={balanceData ? parseFloat(balanceData.formatted || "0").toFixed(4) : "0.00"}
+            />
 
             {/* 3 AI Feature Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
