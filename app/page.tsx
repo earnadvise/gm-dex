@@ -32,6 +32,8 @@ import {
   Plus,
   Trash2,
   Bot,
+  Terminal,
+  History,
 } from "lucide-react";
 
 // ─── Wallet Button ───────────────────────────────────────────────────────────
@@ -2186,6 +2188,63 @@ export default function Home() {
                 <span className="text-xs font-bold text-[#01C38E] mt-4 flex items-center gap-1">
                   Audit Portfolio ➔
                 </span>
+              </div>
+            </div>
+
+            {/* Slash Commands Interactive Cheat Sheet */}
+            <div className="bg-[#0f172a]/90 border border-white/[0.08] rounded-3xl p-6 backdrop-blur-2xl shadow-xl">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Terminal className="h-5 w-5 text-[#01C38E]" />
+                  <h3 className="font-extrabold text-white text-base">Supported Slash Commands</h3>
+                </div>
+                <span className="text-xs text-zinc-500 font-mono">Agent Engine v2.0</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div
+                  onClick={() => handleAutoFillSwap("ETH", "USDC", "0.01")}
+                  className="p-3.5 rounded-2xl bg-black/30 border border-white/5 hover:border-[#01C38E]/40 transition-all cursor-pointer flex items-center justify-between"
+                >
+                  <div>
+                    <div className="font-mono font-bold text-[#01C38E] text-xs">/swap [amt] [in] [out]</div>
+                    <div className="text-[11px] text-zinc-400 mt-0.5">Executes instant swap order (e.g. /swap 0.01 eth usdc)</div>
+                  </div>
+                  <span className="text-xs font-bold text-[#01C38E] shrink-0 ml-2">Run ➔</span>
+                </div>
+
+                <div
+                  onClick={() => setActiveTab("portfolio")}
+                  className="p-3.5 rounded-2xl bg-black/30 border border-white/5 hover:border-[#01C38E]/40 transition-all cursor-pointer flex items-center justify-between"
+                >
+                  <div>
+                    <div className="font-mono font-bold text-[#01C38E] text-xs">/balance</div>
+                    <div className="text-[11px] text-zinc-400 mt-0.5">Scans connected wallet balances & USD net worth</div>
+                  </div>
+                  <span className="text-xs font-bold text-[#01C38E] shrink-0 ml-2">Run ➔</span>
+                </div>
+
+                <div
+                  onClick={() => window.open("https://basescan.org/address/0x9dc3BBdB8817309ba42b79cc357EC6Be47030B70", "_blank")}
+                  className="p-3.5 rounded-2xl bg-black/30 border border-white/5 hover:border-[#01C38E]/40 transition-all cursor-pointer flex items-center justify-between"
+                >
+                  <div>
+                    <div className="font-mono font-bold text-[#01C38E] text-xs">/history</div>
+                    <div className="text-[11px] text-zinc-400 mt-0.5">Views on-chain transactions on Basescan</div>
+                  </div>
+                  <span className="text-xs font-bold text-[#01C38E] shrink-0 ml-2">Run ➔</span>
+                </div>
+
+                <div
+                  onClick={() => setActiveTab("liquidity")}
+                  className="p-3.5 rounded-2xl bg-black/30 border border-white/5 hover:border-[#01C38E]/40 transition-all cursor-pointer flex items-center justify-between"
+                >
+                  <div>
+                    <div className="font-mono font-bold text-[#01C38E] text-xs">/yield or /pools</div>
+                    <div className="text-[11px] text-zinc-400 mt-0.5">Ranks top APY Aerodrome liquidity pools</div>
+                  </div>
+                  <span className="text-xs font-bold text-[#01C38E] shrink-0 ml-2">Run ➔</span>
+                </div>
               </div>
             </div>
           </div>
