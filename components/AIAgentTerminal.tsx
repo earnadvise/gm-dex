@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useAccount, useSendTransaction, useWriteContract, useReadContract } from "wagmi";
+import { useAccount, useSendTransaction, useWriteContract } from "wagmi";
 import { encodeFunctionData, Hex } from "viem";
 import { appendBuilderCode } from "@/lib/builderCode";
 import { SUPPORTED_TOKENS, Token } from "@/lib/tokens";
@@ -20,7 +20,7 @@ import {
   Wallet,
   ShieldCheck,
   Zap,
-  Layers,
+  TrendingUp,
   History,
   Terminal,
 } from "lucide-react";
@@ -38,16 +38,6 @@ const ERC20_ABI = [
       { name: "amount", type: "uint256" },
     ],
     outputs: [{ name: "", type: "bool" }],
-  },
-  {
-    name: "allowance",
-    type: "function",
-    stateMutability: "view",
-    inputs: [
-      { name: "owner", type: "address" },
-      { name: "spender", type: "address" },
-    ],
-    outputs: [{ name: "", type: "uint256" }],
   },
 ] as const;
 
@@ -123,9 +113,7 @@ interface SwapCardData {
   inputToken: Token;
   outputToken: Token;
   amount: string;
-  isExecuting?: boolean;
-  txHash?: string;
-  error?: string;
+  estOutput: string;
 }
 
 interface Message {
@@ -137,11 +125,11 @@ interface Message {
 }
 
 const PLACEHOLDERS = [
-  "Ask balances, positions, or execute swap (/swap 10 USDC to EURC)...",
-  "Try /swap 0.01 ETH to USDC...",
-  "Try /balance to check on-chain net worth...",
-  "Try /audit BRETT for smart contract safety...",
-  "Try /yield to view top Aerodrome liquidity pools...",
+  "Execute swap: /swap 10 USDC to EURC...",
+  "Execute swap: /swap 0.01 ETH to USDC...",
+  "Check balance: /balance...",
+  "Security check: /audit BRETT...",
+  "Best yield pools: /yield...",
 ];
 
 export function AIAgentTerminal() {
@@ -152,17 +140,18 @@ export function AIAgentTerminal() {
   const [inputMessage, setInputMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
-  const [activeExecutingId, setActiveExecutingId] = useState<string | null>(null);
+  const [executingMsgId, setExecutingMsgId] = useState<string | null>(null);
 
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "welcome",
       sender: "agent",
-      text: "👋 GM! I am **GM AI Agent**, your autonomous on-chain trading copilot on Base Mainnet.\n\nI can execute direct EVM swaps, scan balances, audit token contracts, and rank liquidity pools.",
+      text: "👋 GM! I am **GM AI Agent**, your autonomous on-chain trading copilot on Base.\n\nI can execute direct EVM swaps, audit token security, and scan your wallet balance.",
       swapCard: {
         inputToken: SUPPORTED_TOKENS.find(t => t.symbol === "USDC") || SUPPORTED_TOKENS[1],
         outputToken: SUPPORTED_TOKENS.find(t => t.symbol === "EURC") || SUPPORTED_TOKENS[3],
         amount: "10",
+        estOutput: "9.25",
       },
       timestamp: "Just now",
     },
@@ -192,14 +181,14 @@ export function AIAgentTerminal() {
         {
           id: Date.now().toString(),
           sender: "agent",
-          text: "⚠️ **Wallet Not Connected**: Please connect your wallet in the top right header to execute on-chain transactions.",
+          text: "⚠️ **Wallet Not Connected**: Please connect your wallet in the top navigation to execute swaps on Base.",
           timestamp: "Just now",
         },
       ]);
       return;
     }
 
-    setActiveExecutingId(msgId);
+    setExecutingMsgId(msgId);
 
     try {
       const { inputToken, outputToken, amount } = swapData;
@@ -286,7 +275,7 @@ export function AIAgentTerminal() {
         {
           id: Date.now().toString(),
           sender: "agent",
-          text: `✅ **Swap Executed Successfully on Base Mainnet!**\n\n• **Swapped**: ${amount} ${inputToken.symbol} ➔ ${outputToken.symbol}\n• **Transaction Hash**: [${txHash.slice(0, 10)}...${txHash.slice(-8)}](https://basescan.org/tx/${txHash})\n• **Router**: \`0x9dc3BBdB881...\` (0.1% Treasury Fee Included)`,
+          text: `✅ **Swap Confirmed on Base Mainnet!**\n\n• **Swapped**: ${amount} ${inputToken.symbol} ➔ ${outputToken.symbol}\n• **Transaction Hash**: [${txHash.slice(0, 10)}...${txHash.slice(-8)}](https://basescan.org/tx/${txHash})\n• **Routing**: Aerodrome V2 (0.1% Treasury Fee Included)`,
           timestamp: "Just now",
         },
       ]);
@@ -298,12 +287,12 @@ export function AIAgentTerminal() {
         {
           id: Date.now().toString(),
           sender: "agent",
-          text: `❌ **Swap Failed:** ${errMsg}\n\nYou can try again or customize parameters.`,
+          text: `❌ **Swap Failed:** ${errMsg}\n\nYou can try again or modify parameters.`,
           timestamp: "Just now",
         },
       ]);
     } finally {
-      setActiveExecutingId(null);
+      setExecutingMsgId(null);
     }
   };
 
@@ -347,7 +336,7 @@ export function AIAgentTerminal() {
             id: Date.now().toString(),
             sender: "agent",
             text: isConnected && address
-              ? `💼 **Wallet Status:** Connected (\`${address.slice(0, 6)}...${address.slice(-4)}\`)\n\n• **Network**: Base Mainnet (Chain ID 8453)\n• **Gas Buffer**: ~0.0005 ETH\n• **Security**: 100% Non-Custodial`
+              ? `💼 **Wallet Status:** Connected (\`${address.slice(0, 6)}...${address.slice(-4)}\`)\n\n• **Network**: Base Mainnet (Chain ID 8453)\n• **Security**: 100% Non-Custodial`
               : "💼 **Wallet Not Connected**: Please connect your wallet in the top header.",
             timestamp: "Just now",
           },
@@ -363,7 +352,7 @@ export function AIAgentTerminal() {
           {
             id: Date.now().toString(),
             sender: "agent",
-            text: `📜 **On-Chain Transaction Routers:**\n\n• **GM DEX Swap Router**: [0x9dc3BBdB881...](https://basescan.org/address/0x9dc3BBdB8817309ba42b79cc357EC6Be47030B70)\n• **Liquidity Router**: [0x379bB6CBd...](https://basescan.org/address/0x379bB6CBd151c8A9C3da6e534E46356e17b14572)\n• **Base Builder Code**: \`6a488e6c2876ee6c1138a856\` (ERC-8021)`,
+            text: `📜 **On-Chain Transaction Routers:**\n\n• **GM DEX Router**: [0x9dc3BBdB881...](https://basescan.org/address/0x9dc3BBdB8817309ba42b79cc357EC6Be47030B70)\n• **Liquidity Router**: [0x379bB6CBd...](https://basescan.org/address/0x379bB6CBd151c8A9C3da6e534E46356e17b14572)\n• **Base Builder Code**: \`6a488e6c2876ee6c1138a856\` (ERC-8021)`,
             timestamp: "Just now",
           },
         ]);
@@ -413,6 +402,11 @@ export function AIAgentTerminal() {
       const inToken = SUPPORTED_TOKENS.find(t => t.symbol.toUpperCase() === symA) || SUPPORTED_TOKENS[1];
       const outToken = SUPPORTED_TOKENS.find(t => t.symbol.toUpperCase() === symB) || SUPPORTED_TOKENS[3];
 
+      const rateIn = TOKEN_USD_PRICES[inToken.symbol.toUpperCase()] || 1.0;
+      const rateOut = TOKEN_USD_PRICES[outToken.symbol.toUpperCase()] || 1.0;
+      const inAmtNum = parseFloat(amount) || 1;
+      const estOut = ((inAmtNum * rateIn) / rateOut).toFixed(4);
+
       setMessages((prev) => [
         ...prev,
         {
@@ -423,110 +417,125 @@ export function AIAgentTerminal() {
             inputToken: inToken,
             outputToken: outToken,
             amount: amount,
+            estOutput: estOut,
           },
           timestamp: "Just now",
         },
       ]);
       setIsTyping(false);
-    }, 450);
+    }, 400);
   };
 
   const shortAddr = address ? `${address.slice(0, 6)}...${address.slice(-4)}` : "Disconnected";
 
   return (
-    <div className="w-full max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 py-2">
-      {/* Left 8 Cols: Full Clean Chat Terminal */}
-      <div className="lg:col-span-8 flex flex-col bg-[#0c1222]/95 border border-[#01C38E]/30 rounded-3xl shadow-2xl overflow-hidden h-[680px]">
-        {/* Terminal Top Bar */}
-        <div className="p-4 border-b border-white/10 bg-gradient-to-r from-[#0c1222] via-[#101b30] to-[#0c1222] flex items-center justify-between">
+    <div className="w-full max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-5 py-1">
+      {/* Left 8.5 Cols: Refined Professional Chat Terminal */}
+      <div className="lg:col-span-8 flex flex-col bg-[#0b101d] border border-white/[0.08] rounded-3xl shadow-2xl overflow-hidden h-[660px] relative">
+        {/* Minimalist Terminal Header */}
+        <div className="px-5 py-3.5 border-b border-white/[0.08] bg-[#0e1424] flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#01C38E] to-[#0A786A] p-[1px]">
-              <div className="w-full h-full rounded-[11px] bg-[#0c1222] flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#01C38E] to-[#0A786A] p-[1.5px] shadow-sm">
+              <div className="w-full h-full rounded-[10px] bg-[#0b101d] flex items-center justify-center">
                 <Bot className="h-4 w-4 text-[#01C38E]" />
               </div>
             </div>
             <div>
-              <span className="font-extrabold text-sm text-white flex items-center gap-2">
-                GM AI Terminal
-                <span className="w-2 h-2 rounded-full bg-[#01C38E] animate-pulse" />
-              </span>
-              <p className="text-[10px] text-zinc-400">Direct EVM Transaction Execution</p>
+              <div className="flex items-center gap-2">
+                <span className="font-extrabold text-sm text-white">GM AI Terminal</span>
+                <span className="text-[10px] bg-[#01C38E]/15 text-[#01C38E] border border-[#01C38E]/30 font-mono px-2 py-0.5 rounded-full font-bold">
+                  ● Base L2
+                </span>
+              </div>
+              <p className="text-[11px] text-zinc-400">Direct EVM Transaction Execution</p>
             </div>
           </div>
+
           <button
             onClick={() => handleSend("/clear")}
-            className="p-1.5 text-zinc-400 hover:text-red-400 rounded-lg hover:bg-white/10 transition-colors text-xs flex items-center gap-1 cursor-pointer"
+            className="p-1.5 px-2.5 text-zinc-400 hover:text-white rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-xs flex items-center gap-1.5 cursor-pointer"
+            title="Clear Chat History"
           >
             <Trash2 className="h-3.5 w-3.5" /> Clear
           </button>
         </div>
 
         {/* Chat Stream */}
-        <div className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-4 text-xs leading-relaxed">
+        <div className="flex-1 p-5 sm:p-6 overflow-y-auto space-y-4 text-xs leading-relaxed font-sans">
           {messages.map((msg) => (
             <div
               key={msg.id}
               className={`flex gap-3 ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
             >
               {msg.sender === "agent" && (
-                <div className="w-7 h-7 rounded-xl bg-[#01C38E]/20 text-[#01C38E] border border-[#01C38E]/30 flex items-center justify-center shrink-0 mt-0.5">
-                  <Bot className="h-4 w-4" />
+                <div className="w-7 h-7 rounded-lg bg-[#01C38E]/15 text-[#01C38E] border border-[#01C38E]/25 flex items-center justify-center shrink-0 mt-0.5">
+                  <Bot className="h-3.5 w-3.5" />
                 </div>
               )}
 
-              <div className="flex flex-col gap-2 max-w-[88%] sm:max-w-[78%]">
+              <div className="flex flex-col gap-1.5 max-w-[90%] sm:max-w-[80%]">
                 <div
                   className={`p-4 rounded-2xl whitespace-pre-line ${
                     msg.sender === "user"
-                      ? "bg-[#01C38E] text-white rounded-tr-none font-medium shadow-lg shadow-[#01C38E]/20"
-                      : "bg-[#11192e] border border-white/10 text-zinc-200 rounded-tl-none shadow-lg"
+                      ? "bg-[#01C38E] text-white rounded-tr-none font-medium shadow-md shadow-[#01C38E]/15"
+                      : "bg-[#131a2b] border border-white/[0.08] text-zinc-200 rounded-tl-none shadow-sm"
                   }`}
                 >
                   {msg.text}
 
-                  {/* Interactive Token Swap Card Embedded Directly in Chat */}
+                  {/* Refined Interactive Token Swap Card */}
                   {msg.swapCard && (
-                    <div className="mt-3.5 bg-black/40 border border-[#01C38E]/30 rounded-2xl p-4 flex flex-col gap-3.5 shadow-inner">
-                      <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#01C38E]">
-                        <Sparkles className="h-3.5 w-3.5" />
-                        <span>Interactive Token Swap</span>
+                    <div className="mt-3 bg-[#0a0e1a] border border-[#01C38E]/30 rounded-2xl p-4 flex flex-col gap-3 shadow-md">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="font-bold text-[#01C38E] flex items-center gap-1.5">
+                          <Sparkles className="h-3.5 w-3.5" /> Interactive Token Swap
+                        </span>
+                        <span className="text-zinc-500 font-mono text-[10px]">Aerodrome V2</span>
                       </div>
 
                       {/* Sell -> Buy Box */}
-                      <div className="grid grid-cols-5 gap-2 items-center bg-[#0c1222] border border-white/5 rounded-xl p-3">
-                        <div className="col-span-2 text-center">
-                          <span className="text-[10px] text-zinc-500 uppercase font-bold block mb-1">Sell</span>
-                          <span className="font-extrabold text-white text-sm">
-                            {msg.swapCard.amount} {msg.swapCard.inputToken.symbol}
-                          </span>
+                      <div className="grid grid-cols-5 gap-2 items-center bg-[#131a2b] border border-white/[0.06] rounded-xl p-3">
+                        <div className="col-span-2 text-center flex flex-col items-center">
+                          <span className="text-[10px] text-zinc-400 font-semibold uppercase block mb-1">Sell</span>
+                          <div className="flex items-center gap-1.5">
+                            <TokenIcon symbol={msg.swapCard.inputToken.symbol} image={msg.swapCard.inputToken.image} className="w-4 h-4 rounded-full" />
+                            <span className="font-extrabold text-white text-sm">
+                              {msg.swapCard.amount} {msg.swapCard.inputToken.symbol}
+                            </span>
+                          </div>
                         </div>
 
-                        <div className="col-span-1 flex justify-center text-zinc-500">
-                          <ArrowRight className="h-4 w-4 text-[#01C38E]" />
+                        <div className="col-span-1 flex justify-center">
+                          <div className="w-6 h-6 rounded-full bg-white/5 flex items-center justify-center">
+                            <ArrowRight className="h-3.5 w-3.5 text-[#01C38E]" />
+                          </div>
                         </div>
 
-                        <div className="col-span-2 text-center">
-                          <span className="text-[10px] text-zinc-500 uppercase font-bold block mb-1">Buy</span>
-                          <span className="font-extrabold text-[#01C38E] text-sm">
-                            {msg.swapCard.outputToken.symbol}
-                          </span>
+                        <div className="col-span-2 text-center flex flex-col items-center">
+                          <span className="text-[10px] text-zinc-400 font-semibold uppercase block mb-1">Buy (Est.)</span>
+                          <div className="flex items-center gap-1.5">
+                            <TokenIcon symbol={msg.swapCard.outputToken.symbol} image={msg.swapCard.outputToken.image} className="w-4 h-4 rounded-full" />
+                            <span className="font-extrabold text-[#01C38E] text-sm">
+                              {msg.swapCard.estOutput || msg.swapCard.amount} {msg.swapCard.outputToken.symbol}
+                            </span>
+                          </div>
                         </div>
                       </div>
 
                       {/* Direct EVM Execution Button */}
                       <button
-                        disabled={activeExecutingId === msg.id}
+                        disabled={executingMsgId === msg.id}
                         onClick={() => handleDirectSwap(msg.id, msg.swapCard!)}
-                        className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-[#01C38E] to-[#0A786A] hover:opacity-90 disabled:opacity-50 text-white font-black text-xs transition-all shadow-lg shadow-[#01C38E]/25 flex items-center justify-center gap-2 cursor-pointer"
+                        className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#01C38E] to-[#0A786A] hover:opacity-90 disabled:opacity-50 text-white font-extrabold text-xs transition-all shadow-md shadow-[#01C38E]/20 flex items-center justify-center gap-2 cursor-pointer"
                       >
-                        {activeExecutingId === msg.id ? (
+                        {executingMsgId === msg.id ? (
                           <>
                             <Loader2 className="h-4 w-4 animate-spin" />
                             <span>Confirming in Wallet...</span>
                           </>
                         ) : (
                           <>
-                            <Sparkles className="h-4 w-4" />
+                            <Zap className="h-3.5 w-3.5" />
                             <span>Confirm & Execute Swap</span>
                           </>
                         )}
@@ -538,15 +547,15 @@ export function AIAgentTerminal() {
               </div>
 
               {msg.sender === "user" && (
-                <div className="w-7 h-7 rounded-xl bg-white/10 text-white border border-white/20 flex items-center justify-center shrink-0 mt-0.5">
-                  <User className="h-4 w-4" />
+                <div className="w-7 h-7 rounded-lg bg-white/10 text-white border border-white/15 flex items-center justify-center shrink-0 mt-0.5">
+                  <User className="h-3.5 w-3.5" />
                 </div>
               )}
             </div>
           ))}
 
           {isTyping && (
-            <div className="flex items-center gap-2 text-zinc-400 p-3 bg-white/5 rounded-2xl w-24 ml-10">
+            <div className="flex items-center gap-2 text-zinc-400 p-2.5 bg-[#131a2b] rounded-xl w-20 ml-10">
               <span className="w-1.5 h-1.5 rounded-full bg-[#01C38E] animate-bounce" />
               <span className="w-1.5 h-1.5 rounded-full bg-[#01C38E] animate-bounce [animation-delay:0.2s]" />
               <span className="w-1.5 h-1.5 rounded-full bg-[#01C38E] animate-bounce [animation-delay:0.4s]" />
@@ -556,7 +565,7 @@ export function AIAgentTerminal() {
         </div>
 
         {/* Input Bar */}
-        <div className="p-3.5 border-t border-white/10 bg-black/40 flex items-center gap-2">
+        <div className="p-3 border-t border-white/[0.08] bg-[#0e1424] flex items-center gap-2">
           <input
             type="text"
             placeholder={PLACEHOLDERS[placeholderIndex]}
@@ -565,24 +574,24 @@ export function AIAgentTerminal() {
             onKeyDown={(e) => {
               if (e.key === "Enter") handleSend();
             }}
-            className="flex-1 bg-white/5 border border-white/10 focus:border-[#01C38E] rounded-xl px-4 py-3 text-xs sm:text-sm text-white outline-none placeholder-zinc-500 transition-all font-sans"
+            className="flex-1 bg-[#131a2b] border border-white/[0.08] focus:border-[#01C38E]/50 rounded-xl px-4 py-2.5 text-xs text-white outline-none placeholder-zinc-500 transition-all font-sans"
           />
           <button
             onClick={() => handleSend()}
             disabled={!inputMessage.trim()}
-            className="p-3 bg-[#01C38E] hover:bg-[#00ab7c] disabled:opacity-40 disabled:hover:bg-[#01C38E] text-white rounded-xl transition-all shadow-md shadow-[#01C38E]/20 cursor-pointer"
+            className="p-2.5 px-3 bg-[#01C38E] hover:bg-[#00ab7c] disabled:opacity-40 disabled:hover:bg-[#01C38E] text-white rounded-xl transition-all shadow-md shadow-[#01C38E]/20 cursor-pointer"
           >
             <Send className="h-4 w-4" />
           </button>
         </div>
       </div>
 
-      {/* Right 4 Cols: Terminal Connection Panel */}
+      {/* Right 3.5 Cols: Professional Terminal Connection Sidebar */}
       <div className="lg:col-span-4 flex flex-col gap-4">
-        {/* Terminal Connection Widget */}
-        <div className="bg-[#0c1222]/95 border border-white/[0.08] rounded-3xl p-5 shadow-xl flex flex-col gap-3">
-          <div className="flex items-center gap-2 pb-3 border-b border-white/5">
-            <Wallet className="h-4 w-4 text-[#01C38E]" />
+        {/* Terminal Connection Box */}
+        <div className="bg-[#0b101d] border border-white/[0.08] rounded-3xl p-5 shadow-xl flex flex-col gap-3">
+          <div className="flex items-center gap-2 pb-2.5 border-b border-white/[0.06]">
+            <Terminal className="h-4 w-4 text-[#01C38E]" />
             <h3 className="font-extrabold text-white text-sm">Terminal Connection</h3>
           </div>
 
@@ -594,45 +603,45 @@ export function AIAgentTerminal() {
             </div>
           </div>
 
-          <div className="border-t border-white/5 pt-3">
+          <div className="border-t border-white/[0.06] pt-2.5">
             <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-1">Network</span>
             <span className="text-xs text-zinc-300 font-semibold flex items-center gap-1.5">
               🔵 Base Mainnet (8453)
             </span>
           </div>
 
-          <div className="border-t border-white/5 pt-3">
-            <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-1">Router Engine</span>
+          <div className="border-t border-white/[0.06] pt-2.5">
+            <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-1">Protocol Routing</span>
             <span className="text-[11px] text-[#01C38E] font-mono truncate block">
-              0x9dc3BBdB881... (0.1% Fee)
+              Aerodrome V2 (0.1% Fee)
             </span>
           </div>
         </div>
 
-        {/* Quick Prompts */}
-        <div className="bg-[#0c1222]/95 border border-white/[0.08] rounded-3xl p-5 shadow-xl flex flex-col gap-2.5">
+        {/* Quick Command Suggestions */}
+        <div className="bg-[#0b101d] border border-white/[0.08] rounded-3xl p-5 shadow-xl flex flex-col gap-2">
           <span className="text-xs font-bold text-white mb-1">⚡ Quick Commands</span>
           <button
             onClick={() => handleSend("/swap 10 USDC to EURC")}
-            className="w-full text-left p-2.5 rounded-xl bg-white/5 hover:bg-[#01C38E]/20 border border-white/5 hover:border-[#01C38E]/40 text-xs text-zinc-300 hover:text-white transition-all font-mono"
+            className="w-full text-left p-2 rounded-xl bg-[#131a2b] hover:bg-[#01C38E]/15 border border-white/[0.04] hover:border-[#01C38E]/30 text-xs text-zinc-300 hover:text-white transition-all font-mono"
           >
             /swap 10 USDC to EURC
           </button>
           <button
             onClick={() => handleSend("/swap 0.01 ETH to USDC")}
-            className="w-full text-left p-2.5 rounded-xl bg-white/5 hover:bg-[#01C38E]/20 border border-white/5 hover:border-[#01C38E]/40 text-xs text-zinc-300 hover:text-white transition-all font-mono"
+            className="w-full text-left p-2 rounded-xl bg-[#131a2b] hover:bg-[#01C38E]/15 border border-white/[0.04] hover:border-[#01C38E]/30 text-xs text-zinc-300 hover:text-white transition-all font-mono"
           >
             /swap 0.01 ETH to USDC
           </button>
           <button
             onClick={() => handleSend("/balance")}
-            className="w-full text-left p-2.5 rounded-xl bg-white/5 hover:bg-[#01C38E]/20 border border-white/5 hover:border-[#01C38E]/40 text-xs text-zinc-300 hover:text-white transition-all font-mono"
+            className="w-full text-left p-2 rounded-xl bg-[#131a2b] hover:bg-[#01C38E]/15 border border-white/[0.04] hover:border-[#01C38E]/30 text-xs text-zinc-300 hover:text-white transition-all font-mono"
           >
             /balance
           </button>
           <button
             onClick={() => handleSend("/audit BRETT")}
-            className="w-full text-left p-2.5 rounded-xl bg-white/5 hover:bg-[#01C38E]/20 border border-white/5 hover:border-[#01C38E]/40 text-xs text-zinc-300 hover:text-white transition-all font-mono"
+            className="w-full text-left p-2 rounded-xl bg-[#131a2b] hover:bg-[#01C38E]/15 border border-white/[0.04] hover:border-[#01C38E]/30 text-xs text-zinc-300 hover:text-white transition-all font-mono"
           >
             /audit BRETT
           </button>
