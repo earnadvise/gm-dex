@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Bot, Sparkles, X, Send, ArrowRight, ShieldCheck, TrendingUp, Zap, Layers, Wallet, History, HelpCircle, Terminal, RefreshCw, Trash2 } from "lucide-react";
+import { Bot, Sparkles, X, Send, ArrowRight, ShieldCheck, TrendingUp, Zap, Layers, Wallet, History, HelpCircle, Terminal, RefreshCw, Trash2, Command } from "lucide-react";
 import { Token, SUPPORTED_TOKENS } from "@/lib/tokens";
 
 interface AIAgentCopilotProps {
@@ -34,10 +34,21 @@ const SLASH_COMMANDS = [
   { cmd: "/clear", desc: "Clear chat messages", example: "/clear" },
 ];
 
+const PLACEHOLDERS = [
+  "Type /swap 0.01 eth usdc...",
+  "Type /balance (check portfolio & net worth)...",
+  "Type /audit brett (0% tax & honeypot check)...",
+  "Type /yield (top Base APY pools)...",
+  "Type /history (view Base transactions)...",
+  "Type /help (show all commands)...",
+];
+
 export function AIAgentCopilot({ onAutoFillSwap, onNavigateTab, walletConnected, walletBalance }: AIAgentCopilotProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [inputMessage, setInputMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
+  const [showCommandsMenu, setShowCommandsMenu] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "welcome",
@@ -58,6 +69,14 @@ export function AIAgentCopilot({ onAutoFillSwap, onNavigateTab, walletConnected,
       scrollToBottom();
     }
   }, [messages, isOpen]);
+
+  // Rotate dynamic placeholder text smoothly
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setPlaceholderIndex((prev) => (prev + 1) % PLACEHOLDERS.length);
+    }, 3200);
+    return () => clearInterval(interval);
+  }, []);
 
   const parseAndRespond = (query: string) => {
     const raw = query.trim();
@@ -188,7 +207,6 @@ export function AIAgentCopilot({ onAutoFillSwap, onNavigateTab, walletConnected,
 
     if (isSlashSwap) {
       const parts = raw.split(/\s+/).filter(Boolean);
-      // e.g. /swap 0.05 eth usdc or /swap eth usdc
       if (parts.length >= 4) {
         amount = parts[1];
         symA = parts[2].toUpperCase();
@@ -258,6 +276,7 @@ export function AIAgentCopilot({ onAutoFillSwap, onNavigateTab, walletConnected,
 
     setMessages((prev) => [...prev, userMsg]);
     if (!textToSend) setInputMessage("");
+    setShowCommandsMenu(false);
     setIsTyping(true);
 
     setTimeout(() => {
@@ -292,7 +311,7 @@ export function AIAgentCopilot({ onAutoFillSwap, onNavigateTab, walletConnected,
     }
   };
 
-  const isSlashActive = inputMessage.startsWith("/");
+  const isSlashActive = inputMessage.startsWith("/") || showCommandsMenu;
 
   return (
     <>
@@ -437,28 +456,44 @@ export function AIAgentCopilot({ onAutoFillSwap, onNavigateTab, walletConnected,
 
             {/* Slash Command Autocomplete Dropdown */}
             {isSlashActive && (
-              <div className="px-3 py-2 bg-[#080d18] border-t border-white/10 max-h-36 overflow-y-auto space-y-1 text-xs">
-                <span className="text-[10px] font-bold text-zinc-500 uppercase px-2">Slash Commands</span>
-                {SLASH_COMMANDS.filter(s => s.cmd.includes(inputMessage.toLowerCase())).map((s) => (
+              <div className="px-3 py-2 bg-[#080d18] border-t border-white/10 max-h-40 overflow-y-auto space-y-1 text-xs animate-in fade-in duration-150">
+                <div className="flex items-center justify-between px-2 py-1">
+                  <span className="text-[10px] font-bold text-zinc-500 uppercase">Available Slash Commands</span>
+                  <button onClick={() => setShowCommandsMenu(false)} className="text-[10px] text-zinc-500 hover:text-white">Close</button>
+                </div>
+                {SLASH_COMMANDS.filter(s => !inputMessage || s.cmd.includes(inputMessage.toLowerCase()) || inputMessage === "/").map((s) => (
                   <button
                     key={s.cmd}
                     onClick={() => {
                       setInputMessage(s.example);
+                      setShowCommandsMenu(false);
                     }}
-                    className="w-full flex items-center justify-between p-2 rounded-xl hover:bg-white/10 text-left transition-colors cursor-pointer"
+                    className="w-full flex items-center justify-between p-2 rounded-xl hover:bg-white/10 text-left transition-colors cursor-pointer group"
                   >
-                    <span className="font-bold text-[#01C38E] font-mono">{s.cmd}</span>
+                    <span className="font-bold text-[#01C38E] font-mono group-hover:underline">{s.cmd}</span>
                     <span className="text-[11px] text-zinc-400 truncate max-w-[240px]">{s.desc}</span>
                   </button>
                 ))}
               </div>
             )}
 
-            {/* Input Bar */}
+            {/* Input Bar with Rotating Placeholder & Command Trigger */}
             <div className="p-3 border-t border-white/10 bg-black/40 flex items-center gap-2">
+              <button
+                onClick={() => setShowCommandsMenu(!showCommandsMenu)}
+                className={`p-2 rounded-xl border text-xs font-mono font-bold transition-all cursor-pointer ${
+                  showCommandsMenu
+                    ? "bg-[#01C38E] text-white border-[#01C38E]"
+                    : "bg-white/5 hover:bg-white/10 border-white/10 text-zinc-400 hover:text-[#01C38E]"
+                }`}
+                title="Open Slash Commands Palette"
+              >
+                /
+              </button>
+
               <input
                 type="text"
-                placeholder="Type /swap, /balance, /history, /audit, or ask anything..."
+                placeholder={PLACEHOLDERS[placeholderIndex]}
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyDown={(e) => {
@@ -466,6 +501,7 @@ export function AIAgentCopilot({ onAutoFillSwap, onNavigateTab, walletConnected,
                 }}
                 className="flex-1 bg-white/5 border border-white/10 focus:border-[#01C38E] rounded-xl px-3.5 py-2.5 text-xs text-white outline-none placeholder-zinc-500 transition-all font-sans"
               />
+
               <button
                 onClick={() => handleSend()}
                 disabled={!inputMessage.trim()}
