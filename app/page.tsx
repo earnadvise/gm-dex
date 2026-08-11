@@ -1382,12 +1382,12 @@ export default function Home() {
               <div className="bg-[#0f172a]/90 border border-white/[0.08] rounded-2xl p-5 backdrop-blur-xl group hover:border-[#01C38E]/40 transition-all">
                 <div className="flex items-center gap-3 mb-2">
                   <div className="p-2.5 rounded-xl bg-[#01C38E]/10 text-[#01C38E]">
-                    <Sparkles className="h-5 w-5" />
+                    <Bot className="h-5 w-5" />
                   </div>
-                  <span className="text-xs font-semibold text-zinc-400">Builder Code</span>
+                  <span className="text-xs font-semibold text-zinc-400">AI Trading Copilot</span>
                 </div>
-                <div className="text-2xl font-black text-white truncate">6a488e6c...</div>
-                <p className="text-[11px] text-zinc-500 mt-1">Coinbase Rewarded ERC-8021</p>
+                <div className="text-2xl font-black text-white">GM AI v2.0</div>
+                <p className="text-[11px] text-zinc-500 mt-1">Conversational Swaps & Audits</p>
               </div>
             </div>
 
@@ -1500,12 +1500,12 @@ export default function Home() {
                 {/* Feature 3 */}
                 <div className="bg-[#0f172a]/80 border border-white/[0.08] rounded-2xl p-5 backdrop-blur-xl hover:border-[#01C38E]/30 transition-all flex items-start gap-4">
                   <div className="p-3 rounded-xl bg-[#01C38E]/10 text-[#01C38E] shrink-0">
-                    <Sparkles className="h-6 w-6" />
+                    <ShieldCheck className="h-6 w-6" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-white text-base">Builder Code Enabled</h3>
+                    <h3 className="font-bold text-white text-base">100% Non-Custodial</h3>
                     <p className="text-zinc-400 text-xs mt-1 leading-relaxed">
-                      Every swap appends standard Base Builder attribution for ecosystem fee distribution.
+                      Direct peer-to-peer execution. You always maintain full control of your private keys and assets.
                     </p>
                   </div>
                 </div>
