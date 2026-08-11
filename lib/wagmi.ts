@@ -19,7 +19,7 @@ export const wagmiConfig = createConfig({
     metaMask({
       dappMetadata: {
         name: "GM DEX",
-        url: "https://gm-dex.vercel.app",
+        url: "https://www.gmdexai.xyz",
       },
     }),
     // Any other injected wallet (Rabby, Brave, etc.)

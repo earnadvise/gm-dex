@@ -16,8 +16,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "GM DEX | Daily Streaks & Swaps on Base",
-  description: "Keep your daily GM streak alive, claim XP, unlock onchain badges, and swap premium tokens on Base.",
+  metadataBase: new URL("https://www.gmdexai.xyz"),
+  title: "GM DEX | Daily Streaks & AI Swaps on Base",
+  description: "Keep your daily GM streak alive, claim XP, unlock onchain badges, and execute autonomous AI swaps on Base.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
