@@ -40,6 +40,9 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        <meta name="base:app_id" content="6a488e6c2876ee6c1138a856" />
+      </head>
       <body className="min-h-full flex flex-col">
         <Providers>
           {children}
