@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useAccount, useConnect, useDisconnect, useSendTransaction, useReadContract, useWriteContract, useSwitchChain, useBalance } from "wagmi";
-import { encodeFunctionData, Hex } from "viem";
+import { useAccount, useConnect, useDisconnect, useSendTransaction, useReadContract, useWriteContract, useSwitchChain, useBalance, usePublicClient } from "wagmi";
+import { encodeFunctionData, Hex, maxUint256 } from "viem";
 import { appendBuilderCode, BUILDER_CODE } from "@/lib/builderCode";
 import { SUPPORTED_TOKENS } from "@/lib/tokens";
 import { TokenIcon } from "@/components/TokenIcon";
@@ -648,6 +648,7 @@ export default function Home() {
 
   const isApproved = !inputToken.address || (allowance !== undefined && allowance >= amountWei);
 
+  const publicClient = usePublicClient();
   const { writeContractAsync: approveToken, isPending: isApproving } = useWriteContract();
   const { sendTransactionAsync: sendSwap, isPending: isSwapping } = useSendTransaction();
 
@@ -656,13 +657,17 @@ export default function Home() {
       setError("");
       setTxHash("");
       if (!address || !inputToken.address) return;
-      await approveToken({
+      const approveHash = await approveToken({
         address: inputToken.address as `0x${string}`,
         abi: ERC20_ABI,
         functionName: "approve",
-        args: [GM_DEX_ROUTER, amountWei],
+        args: [GM_DEX_ROUTER, maxUint256],
       });
-      setTimeout(() => refetchAllowance(), 3000);
+
+      if (publicClient && approveHash) {
+        await publicClient.waitForTransactionReceipt({ hash: approveHash });
+      }
+      await refetchAllowance();
     } catch (e: any) {
       setError(e?.shortMessage || e?.message || "Approval failed.");
     }
@@ -971,13 +976,16 @@ export default function Home() {
       setError("");
       setTxHash("");
       if (!address || !poolAddress) return;
-      await approveToken({
+      const approveHash = await approveToken({
         address: poolAddress as `0x${string}`,
         abi: ERC20_ABI,
         functionName: "approve",
-        args: [AERO_ROUTER, removeLpWei],
+        args: [AERO_ROUTER, maxUint256],
       });
-      setTimeout(() => refetchLpAllowance(), 3000);
+      if (publicClient && approveHash) {
+        await publicClient.waitForTransactionReceipt({ hash: approveHash });
+      }
+      await refetchLpAllowance();
     } catch (e: any) {
       setError(e?.shortMessage || e?.message || "LP Approval failed.");
     }
@@ -1058,16 +1066,16 @@ export default function Home() {
       setError("");
       setTxHash("");
       if (!address || !poolTokenA.address) return;
-      await approveToken({
+      const approveHash = await approveToken({
         address: poolTokenA.address as `0x${string}`,
         abi: ERC20_ABI,
         functionName: "approve",
-        args: [GM_DEX_LIQUIDITY, poolAmountAWei],
+        args: [GM_DEX_LIQUIDITY, maxUint256],
       });
-      const refetchA = () => refetchAllowanceA();
-      setTimeout(refetchA, 1000);
-      setTimeout(refetchA, 2500);
-      setTimeout(refetchA, 4500);
+      if (publicClient && approveHash) {
+        await publicClient.waitForTransactionReceipt({ hash: approveHash });
+      }
+      await refetchAllowanceA();
     } catch (e: any) {
       setError(e?.shortMessage || e?.message || "Token A approval failed.");
     }
@@ -1078,16 +1086,16 @@ export default function Home() {
       setError("");
       setTxHash("");
       if (!address || !poolTokenB.address) return;
-      await approveToken({
+      const approveHash = await approveToken({
         address: poolTokenB.address as `0x${string}`,
         abi: ERC20_ABI,
         functionName: "approve",
-        args: [GM_DEX_LIQUIDITY, poolAmountBWei],
+        args: [GM_DEX_LIQUIDITY, maxUint256],
       });
-      const refetchB = () => refetchAllowanceB();
-      setTimeout(refetchB, 1000);
-      setTimeout(refetchB, 2500);
-      setTimeout(refetchB, 4500);
+      if (publicClient && approveHash) {
+        await publicClient.waitForTransactionReceipt({ hash: approveHash });
+      }
+      await refetchAllowanceB();
     } catch (e: any) {
       setError(e?.shortMessage || e?.message || "Token B approval failed.");
     }

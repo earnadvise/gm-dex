@@ -1,4 +1,4 @@
-import { createConfig, http, cookieStorage, createStorage } from "wagmi";
+import { createConfig, http, fallback, cookieStorage, createStorage } from "wagmi";
 import { base, baseSepolia } from "wagmi/chains";
 import { coinbaseWallet, injected, metaMask } from "wagmi/connectors";
 
@@ -26,9 +26,11 @@ export const wagmiConfig = createConfig({
     injected({ shimDisconnect: true }),
   ],
   transports: {
-    [base.id]: http(
-      process.env.NEXT_PUBLIC_RPC_URL || "https://mainnet.base.org"
-    ),
+    [base.id]: fallback([
+      http(process.env.NEXT_PUBLIC_RPC_URL || "https://mainnet.base.org"),
+      http("https://base.llamarpc.com"),
+      http("https://1rpc.io/base"),
+    ]),
     [baseSepolia.id]: http("https://sepolia.base.org"),
   },
 });
