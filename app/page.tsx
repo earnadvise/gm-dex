@@ -8,6 +8,7 @@ import { SUPPORTED_TOKENS } from "@/lib/tokens";
 import { TokenIcon } from "@/components/TokenIcon";
 import { AIAgentCopilot } from "@/components/AIAgentCopilot";
 import { AIAgentTerminal } from "@/components/AIAgentTerminal";
+import { useTokenPrices } from "@/lib/useTokenPrices";
 import {
   ArrowRightLeft,
   ArrowRight,
@@ -614,19 +615,7 @@ export default function Home() {
 
   const outWei = amountsOut ? (amountsOut as bigint[])[amountsOut.length - 1] : 0n;
 
-  // Smart quote estimator fallback with full Base token price oracle
-  const TOKEN_USD_PRICES: Record<string, number> = {
-    ETH: 3300.0,
-    WETH: 3300.0,
-    USDC: 1.0,
-    EURC: 1.08,
-    CBBTC: 66000.0,
-    DEGEN: 0.008,
-    BRETT: 0.085,
-    TOSHI: 0.00035,
-    AERO: 0.85,
-    VIRTUAL: 1.80,
-  };
+  const { prices: livePrices } = useTokenPrices();
 
   const getEstimatedQuote = (): bigint => {
     if (outWei > 0n) return outWei;
@@ -635,8 +624,8 @@ export default function Home() {
     const inSym = inputToken.symbol.toUpperCase();
     const outSym = outputToken.symbol.toUpperCase();
 
-    const rateInUsd = TOKEN_USD_PRICES[inSym] || 1.0;
-    const rateOutUsd = TOKEN_USD_PRICES[outSym] || 1.0;
+    const rateInUsd = livePrices[inSym] || livePrices[inSym === "WETH" ? "ETH" : inSym] || 1.0;
+    const rateOutUsd = livePrices[outSym] || livePrices[outSym === "WETH" ? "ETH" : outSym] || 1.0;
 
     const inAmtNumber = Number(amountWei) / (10 ** inputToken.decimals);
     const outAmtNumber = (inAmtNumber * rateInUsd) / rateOutUsd;

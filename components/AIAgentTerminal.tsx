@@ -6,6 +6,7 @@ import { encodeFunctionData, Hex } from "viem";
 import { appendBuilderCode } from "@/lib/builderCode";
 import { SUPPORTED_TOKENS, Token } from "@/lib/tokens";
 import { TokenIcon } from "@/components/TokenIcon";
+import { useTokenPrices } from "@/lib/useTokenPrices";
 import {
   Bot,
   User,
@@ -166,6 +167,8 @@ export function AIAgentTerminal() {
     query: { refetchInterval: 3000 },
   });
 
+  const { prices: livePrices } = useTokenPrices();
+
   const [inputMessage, setInputMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
@@ -254,8 +257,10 @@ export function AIAgentTerminal() {
       const deadline = BigInt(Math.floor(Date.now() / 1000) + 1200);
 
       // Estimate output quote for minimum received with 1% slippage
-      const rateIn = TOKEN_USD_PRICES[inputToken.symbol.toUpperCase()] || 1.0;
-      const rateOut = TOKEN_USD_PRICES[outputToken.symbol.toUpperCase()] || 1.0;
+      const inSym = inputToken.symbol.toUpperCase();
+      const outSym = outputToken.symbol.toUpperCase();
+      const rateIn = livePrices[inSym] || livePrices[inSym === "WETH" ? "ETH" : inSym] || 1.0;
+      const rateOut = livePrices[outSym] || livePrices[outSym === "WETH" ? "ETH" : outSym] || 1.0;
       const inNum = Number(amountWei) / (10 ** inputToken.decimals);
       const estOutNum = (inNum * rateIn) / rateOut;
       const estOutWei = parseAmt(estOutNum.toFixed(outputToken.decimals), outputToken.decimals);
@@ -469,8 +474,10 @@ export function AIAgentTerminal() {
       const inToken = resolveToken(symA, SUPPORTED_TOKENS.find(t => t.symbol === "ETH") || SUPPORTED_TOKENS[0]);
       const outToken = resolveToken(symB, SUPPORTED_TOKENS.find(t => t.symbol === "USDT") || SUPPORTED_TOKENS.find(t => t.symbol === "USDC") || SUPPORTED_TOKENS[1]);
 
-      const rateIn = TOKEN_USD_PRICES[inToken.symbol.toUpperCase()] || 1.0;
-      const rateOut = TOKEN_USD_PRICES[outToken.symbol.toUpperCase()] || 1.0;
+      const inSymT = inToken.symbol.toUpperCase();
+      const outSymT = outToken.symbol.toUpperCase();
+      const rateIn = livePrices[inSymT] || livePrices[inSymT === "WETH" ? "ETH" : inSymT] || 1.0;
+      const rateOut = livePrices[outSymT] || livePrices[outSymT === "WETH" ? "ETH" : outSymT] || 1.0;
       const inAmtNum = parseFloat(amount) || 1;
       const estOut = ((inAmtNum * rateIn) / rateOut).toFixed(4);
 
