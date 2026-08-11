@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useAccount, useSendTransaction, useWriteContract, useBalance } from "wagmi";
-import { encodeFunctionData, Hex } from "viem";
+import { useAccount, useSendTransaction, useWriteContract, useBalance, usePublicClient } from "wagmi";
+import { encodeFunctionData, Hex, maxUint256 } from "viem";
 import { appendBuilderCode } from "@/lib/builderCode";
 import { SUPPORTED_TOKENS, Token } from "@/lib/tokens";
 import { TokenIcon } from "@/components/TokenIcon";
@@ -39,6 +39,16 @@ const ERC20_ABI = [
       { name: "amount", type: "uint256" },
     ],
     outputs: [{ name: "", type: "bool" }],
+  },
+  {
+    name: "allowance",
+    type: "function",
+    stateMutability: "view",
+    inputs: [
+      { name: "owner", type: "address" },
+      { name: "spender", type: "address" },
+    ],
+    outputs: [{ name: "", type: "uint256" }],
   },
 ] as const;
 
@@ -138,6 +148,7 @@ export function AIAgentTerminal() {
   const { address, isConnected } = useAccount();
   const { sendTransactionAsync } = useSendTransaction();
   const { writeContractAsync: approveToken } = useWriteContract();
+  const publicClient = usePublicClient();
   const { data: ethBalanceData } = useBalance({
     address,
     query: { refetchInterval: 3000 },
@@ -229,22 +240,52 @@ export function AIAgentTerminal() {
 
       // Check ERC20 approval if not native ETH
       if (inputToken.address) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: Date.now().toString(),
-            sender: "agent",
-            text: `⏳ Requesting **${inputToken.symbol}** approval for GM DEX Router...`,
-            timestamp: "Just now",
-          },
-        ]);
+        let currentAllowance = 0n;
+        if (publicClient && address) {
+          try {
+            currentAllowance = (await publicClient.readContract({
+              address: inputToken.address as `0x${string}`,
+              abi: ERC20_ABI,
+              functionName: "allowance",
+              args: [address, GM_DEX_ROUTER],
+            })) as bigint;
+          } catch (e) {
+            console.warn("Allowance check failed:", e);
+          }
+        }
 
-        await approveToken({
-          address: inputToken.address as `0x${string}`,
-          abi: ERC20_ABI,
-          functionName: "approve",
-          args: [GM_DEX_ROUTER, amountWei],
-        });
+        if (currentAllowance < amountWei) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: Date.now().toString(),
+              sender: "agent",
+              text: `⏳ **1-Time Approval Required**: Approving **${inputToken.symbol}** for GM DEX Router...`,
+              timestamp: "Just now",
+            },
+          ]);
+
+          const approveHash = await approveToken({
+            address: inputToken.address as `0x${string}`,
+            abi: ERC20_ABI,
+            functionName: "approve",
+            args: [GM_DEX_ROUTER, maxUint256],
+          });
+
+          if (publicClient && approveHash) {
+            await publicClient.waitForTransactionReceipt({ hash: approveHash });
+          }
+
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: Date.now().toString(),
+              sender: "agent",
+              text: `✅ **${inputToken.symbol} Approved!** Now executing the swap transaction on Base...`,
+              timestamp: "Just now",
+            },
+          ]);
+        }
       }
 
       // Build Swap Path
