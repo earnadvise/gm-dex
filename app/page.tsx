@@ -643,7 +643,7 @@ export default function Home() {
     abi: ERC20_ABI,
     functionName: "allowance",
     args: address && inputToken.address ? [address, GM_DEX_ROUTER] : undefined,
-    query: { enabled: isConnected && !!address && !!inputToken.address },
+    query: { enabled: isConnected && !!address && !!inputToken.address, refetchInterval: 1500, staleTime: 0 },
   });
 
   const isApproved = !inputToken.address || (allowance !== undefined && allowance >= amountWei);
@@ -684,6 +684,36 @@ export default function Home() {
       const amountIn = amountWei;
       const amountOutMin = finalOutWei > 0n ? (finalOutWei * minSlippageBps) / 10000n : 0n;
       const deadline = BigInt(Math.floor(Date.now() / 1000) + (deadlineMinutes || 20) * 60);
+
+      // Pre-flight check: If swapping ERC20 token, ensure sufficient on-chain allowance
+      if (inputToken.address) {
+        let currentAllowance = 0n;
+        if (publicClient && address) {
+          try {
+            currentAllowance = (await publicClient.readContract({
+              address: inputToken.address as `0x${string}`,
+              abi: ERC20_ABI,
+              functionName: "allowance",
+              args: [address, GM_DEX_ROUTER],
+            })) as bigint;
+          } catch (e) {
+            console.warn("Live allowance check failed:", e);
+          }
+        }
+
+        if (currentAllowance < amountIn) {
+          const approveHash = await approveToken({
+            address: inputToken.address as `0x${string}`,
+            abi: ERC20_ABI,
+            functionName: "approve",
+            args: [GM_DEX_ROUTER, maxUint256],
+          });
+          if (publicClient && approveHash) {
+            await publicClient.waitForTransactionReceipt({ hash: approveHash });
+          }
+          await refetchAllowance();
+        }
+      }
 
       let rawData: Hex;
       let value = 0n;
