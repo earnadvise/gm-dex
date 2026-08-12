@@ -8,22 +8,21 @@ export const wagmiConfig = createConfig({
   chains: isProd ? [base] : [base, baseSepolia],
   ssr: true,
   storage: createStorage({
-    storage: cookieStorage,
+    storage: typeof window !== "undefined" ? window.localStorage : cookieStorage,
   }),
+  multiInjectedProviderDiscovery: true,
   connectors: [
+    injected({ shimDisconnect: true }),
     coinbaseWallet({
       appName: "GMDEXAI",
       preference: "all",
     }),
-    // MetaMask
     metaMask({
       dappMetadata: {
         name: "GMDEXAI",
         url: "https://www.gmdexai.xyz",
       },
     }),
-    // Any other injected wallet (Rabby, Brave, etc.)
-    injected({ shimDisconnect: true }),
   ],
   transports: {
     [base.id]: fallback([

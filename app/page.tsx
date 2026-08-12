@@ -2556,7 +2556,18 @@ export default function Home() {
                         }
                       }
 
-                      connect({ connector });
+                      connect(
+                        { connector },
+                        {
+                          onSuccess: () => {
+                            setShowConnectModal(false);
+                          },
+                          onError: (e) => {
+                            console.error("Connect failed:", e);
+                            setShowConnectModal(false);
+                          },
+                        }
+                      );
                       setShowConnectModal(false);
                     }}
                     className="flex items-center gap-4 w-full p-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-2xl transition-all duration-200 group cursor-pointer"
