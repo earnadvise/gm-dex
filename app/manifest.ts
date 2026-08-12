@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "GM DEX",
-    short_name: "GM DEX",
-    description: "Daily GM streaks and premium token swaps on Base",
+    name: "GMDEXAI",
+    short_name: "GMDEXAI",
+    description: "Autonomous AI swaps and decentralized exchange on Base",
     start_url: "/",
     display: "standalone",
     background_color: "#06070a",

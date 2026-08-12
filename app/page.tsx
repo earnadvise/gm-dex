@@ -1274,7 +1274,7 @@ export default function Home() {
               </div>
               <div>
                 <span className="font-extrabold text-xl tracking-tight bg-gradient-to-r from-white via-[#0a786a] to-[#01c38e] bg-clip-text text-transparent">
-                  GM <span className="text-[#01C38E]">DEX</span>
+                  GMDEX<span className="text-[#01C38E]">AI</span>
                 </span>
                 <span className="hidden sm:inline-block ml-2 px-2 py-0.5 text-[10px] font-medium bg-white/5 border border-white/10 rounded-full text-zinc-400">
                   Base
@@ -2503,7 +2503,7 @@ export default function Home() {
       {/* Footer */}
       <footer className="border-t border-white/5 py-5 bg-black/30 pb-20 md:pb-5">
         <div className="max-w-5xl mx-auto px-4 text-center text-xs text-zinc-600">
-          © 2026 GM DEX · Powered by Base & Uniswap
+          © 2026 GMDEXAI · Powered by Base & Aerodrome V2
         </div>
       </footer>
 
@@ -2545,12 +2545,12 @@ export default function Home() {
 
                       if (isMobile && !hasInjected) {
                         if (isMetaMask) {
-                          window.location.href = "https://metamask.app.link/dapp/gm-dex.vercel.app";
+                          window.location.href = "https://metamask.app.link/dapp/www.gmdexai.xyz";
                           setShowConnectModal(false);
                           return;
                         }
                         if (isCoinbase) {
-                          window.location.href = "https://go.cb-w.com/dapp?cb_url=https%3A%2F%2Fgm-dex.vercel.app";
+                          window.location.href = "https://go.cb-w.com/dapp?cb_url=https%3A%2F%2Fwww.gmdexai.xyz";
                           setShowConnectModal(false);
                           return;
                         }

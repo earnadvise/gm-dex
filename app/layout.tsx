@@ -17,13 +17,13 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.gmdexai.xyz"),
-  title: "GM DEX | Daily Streaks & AI Swaps on Base",
-  description: "Keep your daily GM streak alive, claim XP, unlock onchain badges, and execute autonomous AI swaps on Base.",
+  title: "GMDEXAI | Autonomous AI Swaps & Liquidity on Base",
+  description: "Execute autonomous AI swaps, manage liquidity, and trade with zero friction on Base with GMDEXAI.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "GM DEX",
+    title: "GMDEXAI",
   },
   other: {
     "base:app_id": "6a488e6c2876ee6c1138a856",

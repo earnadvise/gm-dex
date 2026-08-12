@@ -12,13 +12,13 @@ export const wagmiConfig = createConfig({
   }),
   connectors: [
     coinbaseWallet({
-      appName: "GM DEX",
+      appName: "GMDEXAI",
       preference: "all",
     }),
     // MetaMask
     metaMask({
       dappMetadata: {
-        name: "GM DEX",
+        name: "GMDEXAI",
         url: "https://www.gmdexai.xyz",
       },
     }),

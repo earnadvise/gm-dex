@@ -1,7 +1,7 @@
 {
-  "name": "GM DEX — Base L2 Exchange",
-  "short_name": "GM DEX",
-  "description": "High-Performance Decentralized Exchange & Liquidity Protocol on Base Mainnet",
+  "name": "GMDEXAI — Autonomous AI Swaps on Base",
+  "short_name": "GMDEXAI",
+  "description": "High-Performance Autonomous AI Trading & Liquidity Protocol on Base Mainnet",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#090d16",

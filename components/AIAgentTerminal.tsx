@@ -463,7 +463,7 @@ export function AIAgentTerminal() {
           {
             id: Date.now().toString(),
             sender: "agent",
-            text: `📜 **On-Chain Transaction Routers:**\n\n• **GM DEX Router**: [0x9dc3BBdB881...](https://basescan.org/address/0x9dc3BBdB8817309ba42b79cc357EC6Be47030B70)\n• **Liquidity Router**: [0x379bB6CBd...](https://basescan.org/address/0x379bB6CBd151c8A9C3da6e534E46356e17b14572)\n• **Base Builder Code**: \`6a488e6c2876ee6c1138a856\` (ERC-8021)`,
+            text: `📜 **On-Chain Transaction Routers:**\n\n• **GMDEXAI Router**: [0x9dc3BBdB881...](https://basescan.org/address/0x9dc3BBdB8817309ba42b79cc357EC6Be47030B70)\n• **Liquidity Router**: [0x379bB6CBd...](https://basescan.org/address/0x379bB6CBd151c8A9C3da6e534E46356e17b14572)\n• **Base Builder Code**: \`bc_jr1lqf3i\` (ERC-8021)`,
             timestamp: "Just now",
           },
         ]);
@@ -480,7 +480,7 @@ export function AIAgentTerminal() {
           {
             id: Date.now().toString(),
             sender: "agent",
-            text: `🛡️ **GM AI Safety Audit [${target.toUpperCase()}]:**\n\n✅ **Buy / Sell Tax**: 0.0% (Verified)\n✅ **Honeypot Risk**: 0% (Clean Open Liquidity)\n✅ **Router Verification**: Base Mainnet Aerodrome V2\n✅ **Security Rating**: **99 / 100 — Highly Safe**`,
+            text: `🛡️ **GMDEXAI Safety Audit [${target.toUpperCase()}]:**\n\n✅ **Buy / Sell Tax**: 0.0% (Verified)\n✅ **Honeypot Risk**: 0% (Clean Open Liquidity)\n✅ **Router Verification**: Base Mainnet Aerodrome V2\n✅ **Security Rating**: **99 / 100 — Highly Safe**`,
             timestamp: "Just now",
           },
         ]);
@@ -491,16 +491,28 @@ export function AIAgentTerminal() {
       // Clean query: strip leading "/" if any (e.g. "/0.001 eth to usdt" -> "0.001 eth to usdt")
       const cleanQ = q.replace(/^\/+/, "").replace(/^swap\s+/i, "").trim();
 
-      // Parse Swap Command
-      let amount = "10";
+      // Look for amount and tokens: e.g. "0.001 eth to usdc", "1.5 usdc into eth", "usdc to eth", "swap 5 usdt for eth"
+      let parsedAmount: string | null = null;
       let symA = "ETH";
-      let symB = "USDT";
+      let symB = "USDC";
 
-      const swapMatch = cleanQ.match(/^([0-9]*\.?[0-9]+)?\s*([a-z0-9]+)\s*(?:to|for|into|\s)\s*([a-z0-9]+)/i);
-      if (swapMatch) {
-        amount = swapMatch[1] || "10";
-        symA = (swapMatch[2] || "ETH").toUpperCase();
-        symB = (swapMatch[3] || "USDT").toUpperCase();
+      // 1. Try matching with amount: "1.5 usdc to eth" or "0.001 eth for usdt"
+      const matchWithAmt = cleanQ.match(/^([0-9]*\.?[0-9]+)\s*([a-z0-9]+)\s*(?:to|for|into|\s)\s*([a-z0-9]+)/i);
+      if (matchWithAmt) {
+        parsedAmount = matchWithAmt[1];
+        symA = matchWithAmt[2].toUpperCase();
+        symB = matchWithAmt[3].toUpperCase();
+      } else {
+        // 2. Try matching without amount: "usdc to eth" or "eth to usdc"
+        const matchNoAmt = cleanQ.match(/^([a-z0-9]+)\s*(?:to|for|into|\s)\s*([a-z0-9]+)/i);
+        if (matchNoAmt) {
+          symA = matchNoAmt[1].toUpperCase();
+          symB = matchNoAmt[2].toUpperCase();
+        } else {
+          // 3. Fallback: check if single number is in the query
+          const numMatch = cleanQ.match(/([0-9]*\.?[0-9]+)/);
+          if (numMatch) parsedAmount = numMatch[1];
+        }
       }
 
       // Exact token matching with alias support (e.g. BTC -> cbBTC, WETH -> ETH, USDT -> USDT)
@@ -513,7 +525,19 @@ export function AIAgentTerminal() {
       };
 
       const inToken = resolveToken(symA, SUPPORTED_TOKENS.find(t => t.symbol === "ETH") || SUPPORTED_TOKENS[0]);
-      const outToken = resolveToken(symB, SUPPORTED_TOKENS.find(t => t.symbol === "USDT") || SUPPORTED_TOKENS.find(t => t.symbol === "USDC") || SUPPORTED_TOKENS[1]);
+      const outToken = resolveToken(symB, SUPPORTED_TOKENS.find(t => t.symbol === "USDC") || SUPPORTED_TOKENS[1]);
+
+      // Smart default amount based on input token if no amount was explicitly specified
+      let amount = parsedAmount;
+      if (!amount) {
+        if (inToken.symbol === "ETH" || inToken.symbol === "WETH") {
+          amount = "0.001";
+        } else if (inToken.symbol === "cbBTC") {
+          amount = "0.0001";
+        } else {
+          amount = "1"; // 1 USDC / USDT / EURC
+        }
+      }
 
       const inSymT = inToken.symbol.toUpperCase();
       const outSymT = outToken.symbol.toUpperCase();
@@ -527,7 +551,7 @@ export function AIAgentTerminal() {
         {
           id: Date.now().toString(),
           sender: "agent",
-          text: `I can help you swap assets on **GM DEX Router**. I parsed your swap request as: **${amount} ${inToken.symbol} ➔ ${outToken.symbol}**.\n\nYou can execute it directly from the chat:`,
+          text: `I can help you swap assets on **GMDEXAI Router**. I parsed your swap request as: **${amount} ${inToken.symbol} ➔ ${outToken.symbol}**.\n\nYou can execute it directly from the chat:`,
           swapCard: {
             inputToken: inToken,
             outputToken: outToken,

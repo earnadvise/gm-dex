@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, Sparkles, ShieldCheck, Zap, Layers, TrendingUp, ExternalLink, ArrowRightLeft, Droplet } from "lucide-react";
+import { ChevronLeft, ChevronRight, Sparkles, ShieldCheck, Zap, Layers, TrendingUp, ExternalLink, ArrowRightLeft, Droplet, Printer } from "lucide-react";
 
 export default function PitchDeck() {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -300,8 +300,16 @@ export default function PitchDeck() {
             GM DEX <span className="text-[#01C38E] text-xs font-semibold px-2 py-0.5 rounded bg-[#01C38E]/10 border border-[#01C38E]/20">Pitch Deck</span>
           </span>
         </div>
-        <div className="text-xs text-zinc-400 font-semibold">
-          Slide {currentSlide + 1} of {slides.length}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => window.print()}
+            className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
+          >
+            <Printer className="h-3.5 w-3.5 text-[#01C38E]" /> Save as PDF
+          </button>
+          <div className="text-xs text-zinc-400 font-semibold">
+            Slide {currentSlide + 1} of {slides.length}
+          </div>
         </div>
       </header>
 
