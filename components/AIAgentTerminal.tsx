@@ -260,7 +260,7 @@ export function AIAgentTerminal() {
             {
               id: Date.now().toString(),
               sender: "agent",
-              text: `⏳ **1-Time Approval Required**: Approving **${inputToken.symbol}** for GM DEX Router...`,
+              text: `⏳ **Approval Required**: Approving exact **${amount} ${inputToken.symbol}** for GMDEXAI Router...`,
               timestamp: "Just now",
             },
           ]);
@@ -269,7 +269,7 @@ export function AIAgentTerminal() {
             address: inputToken.address as `0x${string}`,
             abi: ERC20_ABI,
             functionName: "approve",
-            args: [GM_DEX_ROUTER, maxUint256],
+            args: [GM_DEX_ROUTER, amountWei],
           });
 
           if (publicClient && approveHash) {

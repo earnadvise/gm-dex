@@ -661,7 +661,7 @@ export default function Home() {
         address: inputToken.address as `0x${string}`,
         abi: ERC20_ABI,
         functionName: "approve",
-        args: [GM_DEX_ROUTER, maxUint256],
+        args: [GM_DEX_ROUTER, amountWei],
       });
 
       if (publicClient && approveHash) {
@@ -706,7 +706,7 @@ export default function Home() {
             address: inputToken.address as `0x${string}`,
             abi: ERC20_ABI,
             functionName: "approve",
-            args: [GM_DEX_ROUTER, maxUint256],
+            args: [GM_DEX_ROUTER, amountIn],
           });
           if (publicClient && approveHash) {
             await publicClient.waitForTransactionReceipt({ hash: approveHash });
@@ -1010,7 +1010,7 @@ export default function Home() {
         address: poolAddress as `0x${string}`,
         abi: ERC20_ABI,
         functionName: "approve",
-        args: [AERO_ROUTER, maxUint256],
+        args: [AERO_ROUTER, removeLpWei],
       });
       if (publicClient && approveHash) {
         await publicClient.waitForTransactionReceipt({ hash: approveHash });
@@ -1100,7 +1100,7 @@ export default function Home() {
         address: poolTokenA.address as `0x${string}`,
         abi: ERC20_ABI,
         functionName: "approve",
-        args: [GM_DEX_LIQUIDITY, maxUint256],
+        args: [GM_DEX_LIQUIDITY, poolAmountAWei],
       });
       if (publicClient && approveHash) {
         await publicClient.waitForTransactionReceipt({ hash: approveHash });
@@ -1120,7 +1120,7 @@ export default function Home() {
         address: poolTokenB.address as `0x${string}`,
         abi: ERC20_ABI,
         functionName: "approve",
-        args: [GM_DEX_LIQUIDITY, maxUint256],
+        args: [GM_DEX_LIQUIDITY, poolAmountBWei],
       });
       if (publicClient && approveHash) {
         await publicClient.waitForTransactionReceipt({ hash: approveHash });
@@ -2521,68 +2521,163 @@ export default function Home() {
                 <X className="h-5 w-5 text-zinc-400" />
               </button>
             </div>
-            <div className="flex flex-col gap-3">
-              {uniqueConnectors.map((connector) => {
-                const id = connector.id.toLowerCase();
-                const name = connector.name.toLowerCase();
-                const isCoinbase = id.includes("coinbase") || name.includes("coinbase");
-                const isMetaMask = id.includes("metamask") || name.includes("metamask");
+            <div className="flex flex-col gap-2.5 max-h-[70vh] overflow-y-auto pr-1">
+              {/* Coinbase Smart Wallet / Passkey */}
+              <button
+                disabled={isConnectPending}
+                onClick={() => {
+                  const isMobile = typeof window !== "undefined" && /iphone|ipad|ipod|android/i.test(navigator.userAgent);
+                  const hasInjected = typeof window !== "undefined" && typeof (window as any).ethereum !== "undefined";
+                  const cbConn = connectors.find(c => c.id.toLowerCase().includes("coinbase") || c.name.toLowerCase().includes("coinbase"));
+                  if (isMobile && !hasInjected) {
+                    window.location.href = "https://go.cb-w.com/dapp?cb_url=https%3A%2F%2Fwww.gmdexai.xyz";
+                    setShowConnectModal(false);
+                    return;
+                  }
+                  if (cbConn) connect({ connector: cbConn }, { onSuccess: () => setShowConnectModal(false) });
+                  else connect({ connector: connectors[0] }, { onSuccess: () => setShowConnectModal(false) });
+                }}
+                className="flex items-center gap-3.5 w-full p-3.5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#01C38E]/40 rounded-2xl transition-all duration-200 group cursor-pointer text-left"
+              >
+                <div className="h-10 w-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center flex-shrink-0 text-xl">
+                  🔵
+                </div>
+                <div className="flex-1">
+                  <p className="text-white font-bold text-sm flex items-center gap-1.5">
+                    Coinbase Wallet
+                    <span className="text-[10px] bg-[#01C38E]/20 text-[#01C38E] font-extrabold px-2 py-0.5 rounded-full">Passkey</span>
+                  </p>
+                  <p className="text-zinc-400 text-xs">Instant FaceID & Smart Wallet</p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-zinc-600 group-hover:text-zinc-300 transition-colors" />
+              </button>
 
-                const icon = isCoinbase ? "🔵" : isMetaMask ? "🦊" : "🐰";
-                const label = isCoinbase ? "Coinbase Wallet" : isMetaMask ? "MetaMask" : "Rabby / Browser Wallet";
-                const desc = isCoinbase
-                  ? "Passkey / FaceID — Instant in browser"
-                  : isMetaMask
-                  ? "Opens in MetaMask App"
-                  : "Browser extension or wallet app";
-                return (
-                  <button
-                    key={connector.uid}
-                    disabled={isConnectPending}
-                    onClick={() => {
-                      const isMobile = typeof window !== "undefined" && /iphone|ipad|ipod|android/i.test(navigator.userAgent);
-                      const hasInjected = typeof window !== "undefined" && typeof (window as any).ethereum !== "undefined";
+              {/* MetaMask */}
+              <button
+                disabled={isConnectPending}
+                onClick={() => {
+                  const isMobile = typeof window !== "undefined" && /iphone|ipad|ipod|android/i.test(navigator.userAgent);
+                  const hasInjected = typeof window !== "undefined" && typeof (window as any).ethereum !== "undefined";
+                  const mmConn = connectors.find(c => c.id.toLowerCase().includes("metamask") || c.name.toLowerCase().includes("metamask")) || connectors.find(c => c.id.toLowerCase().includes("injected"));
+                  if (isMobile && !hasInjected) {
+                    window.location.href = "https://metamask.app.link/dapp/www.gmdexai.xyz";
+                    setShowConnectModal(false);
+                    return;
+                  }
+                  if (mmConn) connect({ connector: mmConn }, { onSuccess: () => setShowConnectModal(false) });
+                  else connect({ connector: connectors[0] }, { onSuccess: () => setShowConnectModal(false) });
+                }}
+                className="flex items-center gap-3.5 w-full p-3.5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-orange-500/40 rounded-2xl transition-all duration-200 group cursor-pointer text-left"
+              >
+                <div className="h-10 w-10 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center flex-shrink-0 text-xl">
+                  🦊
+                </div>
+                <div className="flex-1">
+                  <p className="text-white font-bold text-sm">MetaMask</p>
+                  <p className="text-zinc-400 text-xs">Mobile App & Browser Extension</p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-zinc-600 group-hover:text-zinc-300 transition-colors" />
+              </button>
 
-                      if (isMobile && !hasInjected) {
-                        if (isMetaMask) {
-                          window.location.href = "https://metamask.app.link/dapp/www.gmdexai.xyz";
-                          setShowConnectModal(false);
-                          return;
-                        }
-                        if (isCoinbase) {
-                          window.location.href = "https://go.cb-w.com/dapp?cb_url=https%3A%2F%2Fwww.gmdexai.xyz";
-                          setShowConnectModal(false);
-                          return;
-                        }
-                      }
+              {/* Bitget Wallet */}
+              <button
+                disabled={isConnectPending}
+                onClick={() => {
+                  const isMobile = typeof window !== "undefined" && /iphone|ipad|ipod|android/i.test(navigator.userAgent);
+                  const hasInjected = typeof window !== "undefined" && (typeof (window as any).ethereum !== "undefined" || typeof (window as any).bitkeep !== "undefined");
+                  const injConn = connectors.find(c => c.id.toLowerCase().includes("injected")) || connectors[0];
+                  if (isMobile && !hasInjected) {
+                    window.location.href = "https://bkcode.vip?action=dapp&url=https%3A%2F%2Fwww.gmdexai.xyz";
+                    setShowConnectModal(false);
+                    return;
+                  }
+                  if (injConn) connect({ connector: injConn }, { onSuccess: () => setShowConnectModal(false) });
+                }}
+                className="flex items-center gap-3.5 w-full p-3.5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-cyan-500/40 rounded-2xl transition-all duration-200 group cursor-pointer text-left"
+              >
+                <div className="h-10 w-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center flex-shrink-0 text-xl font-black text-cyan-400">
+                  💠
+                </div>
+                <div className="flex-1">
+                  <p className="text-white font-bold text-sm flex items-center gap-1.5">
+                    Bitget Wallet
+                    <span className="text-[10px] bg-cyan-500/20 text-cyan-400 font-extrabold px-1.5 py-0.5 rounded">Web3</span>
+                  </p>
+                  <p className="text-zinc-400 text-xs">Bitget Web3 App & Browser</p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-zinc-600 group-hover:text-zinc-300 transition-colors" />
+              </button>
 
-                      connect(
-                        { connector },
-                        {
-                          onSuccess: () => {
-                            setShowConnectModal(false);
-                          },
-                          onError: (e) => {
-                            console.error("Connect failed:", e);
-                            setShowConnectModal(false);
-                          },
-                        }
-                      );
-                      setShowConnectModal(false);
-                    }}
-                    className="flex items-center gap-4 w-full p-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-2xl transition-all duration-200 group cursor-pointer"
-                  >
-                    <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-[#01C38E]/20 to-[#01C38E]/20 border border-white/10 flex items-center justify-center flex-shrink-0">
-                      <span className="text-xl">{icon}</span>
-                    </div>
-                    <div className="text-left">
-                      <p className="text-white font-semibold text-sm">{label}</p>
-                      <p className="text-zinc-500 text-xs">{desc}</p>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-zinc-600 group-hover:text-zinc-400 ml-auto transition-colors" />
-                  </button>
-                );
-              })}
+              {/* Trust Wallet */}
+              <button
+                disabled={isConnectPending}
+                onClick={() => {
+                  const isMobile = typeof window !== "undefined" && /iphone|ipad|ipod|android/i.test(navigator.userAgent);
+                  const hasInjected = typeof window !== "undefined" && typeof (window as any).ethereum !== "undefined";
+                  const injConn = connectors.find(c => c.id.toLowerCase().includes("injected")) || connectors[0];
+                  if (isMobile && !hasInjected) {
+                    window.location.href = "https://link.trustwallet.com/open_url?coin_id=60&url=https%3A%2F%2Fwww.gmdexai.xyz";
+                    setShowConnectModal(false);
+                    return;
+                  }
+                  if (injConn) connect({ connector: injConn }, { onSuccess: () => setShowConnectModal(false) });
+                }}
+                className="flex items-center gap-3.5 w-full p-3.5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-blue-500/40 rounded-2xl transition-all duration-200 group cursor-pointer text-left"
+              >
+                <div className="h-10 w-10 rounded-xl bg-blue-600/10 border border-blue-600/20 flex items-center justify-center flex-shrink-0 text-xl text-blue-400">
+                  🛡️
+                </div>
+                <div className="flex-1">
+                  <p className="text-white font-bold text-sm">Trust Wallet</p>
+                  <p className="text-zinc-400 text-xs">Trust Multi-Chain Wallet</p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-zinc-600 group-hover:text-zinc-300 transition-colors" />
+              </button>
+
+              {/* OKX Wallet */}
+              <button
+                disabled={isConnectPending}
+                onClick={() => {
+                  const isMobile = typeof window !== "undefined" && /iphone|ipad|ipod|android/i.test(navigator.userAgent);
+                  const hasInjected = typeof window !== "undefined" && (typeof (window as any).ethereum !== "undefined" || typeof (window as any).okxwallet !== "undefined");
+                  const injConn = connectors.find(c => c.id.toLowerCase().includes("injected")) || connectors[0];
+                  if (isMobile && !hasInjected) {
+                    window.location.href = "https://www.okx.com/download?deeplink=okx%3A%2F%2Fwallet%2Fdapp%2Furl%3FdappUrl%3Dhttps%253A%252F%252Fwww.gmdexai.xyz";
+                    setShowConnectModal(false);
+                    return;
+                  }
+                  if (injConn) connect({ connector: injConn }, { onSuccess: () => setShowConnectModal(false) });
+                }}
+                className="flex items-center gap-3.5 w-full p-3.5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/30 rounded-2xl transition-all duration-200 group cursor-pointer text-left"
+              >
+                <div className="h-10 w-10 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center flex-shrink-0 text-xl font-bold text-white">
+                  ⬛
+                </div>
+                <div className="flex-1">
+                  <p className="text-white font-bold text-sm">OKX Wallet</p>
+                  <p className="text-zinc-400 text-xs">OKX Web3 Multi-Chain</p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-zinc-600 group-hover:text-zinc-300 transition-colors" />
+              </button>
+
+              {/* Rabby / Browser Extension (Injected) */}
+              <button
+                disabled={isConnectPending}
+                onClick={() => {
+                  const injConn = connectors.find(c => c.id.toLowerCase().includes("injected")) || connectors[0];
+                  if (injConn) connect({ connector: injConn }, { onSuccess: () => setShowConnectModal(false) });
+                }}
+                className="flex items-center gap-3.5 w-full p-3.5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#01C38E]/40 rounded-2xl transition-all duration-200 group cursor-pointer text-left"
+              >
+                <div className="h-10 w-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center flex-shrink-0 text-xl">
+                  🐰
+                </div>
+                <div className="flex-1">
+                  <p className="text-white font-bold text-sm">Rabby / Injected Provider</p>
+                  <p className="text-zinc-400 text-xs">Browser extension or in-app Web3</p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-zinc-600 group-hover:text-zinc-300 transition-colors" />
+              </button>
             </div>
           </div>
         </div>
