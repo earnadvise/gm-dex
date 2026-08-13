@@ -2529,8 +2529,13 @@ export default function Home() {
                   const isMobile = typeof window !== "undefined" && /iphone|ipad|ipod|android/i.test(navigator.userAgent);
                   const hasInjected = typeof window !== "undefined" && typeof (window as any).ethereum !== "undefined";
                   const cbConn = connectors.find(c => c.id.toLowerCase().includes("coinbase") || c.name.toLowerCase().includes("coinbase"));
+                  
+                  if (cbConn && !isMobile) {
+                    connect({ connector: cbConn }, { onSuccess: () => setShowConnectModal(false) });
+                    return;
+                  }
                   if (isMobile && !hasInjected) {
-                    window.location.href = "https://go.cb-w.com/dapp?cb_url=https%3A%2F%2Fwww.gmdexai.xyz";
+                    window.location.href = "cbwallet://dapp?url=https%3A%2F%2Fwww.gmdexai.xyz";
                     setShowConnectModal(false);
                     return;
                   }
@@ -2559,8 +2564,12 @@ export default function Home() {
                   const isMobile = typeof window !== "undefined" && /iphone|ipad|ipod|android/i.test(navigator.userAgent);
                   const hasInjected = typeof window !== "undefined" && typeof (window as any).ethereum !== "undefined";
                   const mmConn = connectors.find(c => c.id.toLowerCase().includes("metamask") || c.name.toLowerCase().includes("metamask")) || connectors.find(c => c.id.toLowerCase().includes("injected"));
+                  
                   if (isMobile && !hasInjected) {
-                    window.location.href = "https://metamask.app.link/dapp/www.gmdexai.xyz";
+                    window.location.href = "dapp://www.gmdexai.xyz";
+                    setTimeout(() => {
+                      window.location.href = "https://metamask.app.link/dapp/www.gmdexai.xyz";
+                    }, 500);
                     setShowConnectModal(false);
                     return;
                   }
@@ -2586,8 +2595,9 @@ export default function Home() {
                   const isMobile = typeof window !== "undefined" && /iphone|ipad|ipod|android/i.test(navigator.userAgent);
                   const hasInjected = typeof window !== "undefined" && (typeof (window as any).ethereum !== "undefined" || typeof (window as any).bitkeep !== "undefined");
                   const injConn = connectors.find(c => c.id.toLowerCase().includes("injected")) || connectors[0];
+                  
                   if (isMobile && !hasInjected) {
-                    window.location.href = "https://bkcode.vip?action=dapp&url=https%3A%2F%2Fwww.gmdexai.xyz";
+                    window.location.href = "bitkeep://bkconnect?action=dapp&url=https%3A%2F%2Fwww.gmdexai.xyz";
                     setShowConnectModal(false);
                     return;
                   }
@@ -2601,9 +2611,9 @@ export default function Home() {
                 <div className="flex-1">
                   <p className="text-white font-bold text-sm flex items-center gap-1.5">
                     Bitget Wallet
-                    <span className="text-[10px] bg-cyan-500/20 text-cyan-400 font-extrabold px-1.5 py-0.5 rounded">Web3</span>
+                    <span className="text-[10px] bg-cyan-500/20 text-cyan-400 font-extrabold px-1.5 py-0.5 rounded">Direct App</span>
                   </p>
-                  <p className="text-zinc-400 text-xs">Bitget Web3 App & Browser</p>
+                  <p className="text-zinc-400 text-xs">Opens Bitget Wallet app directly</p>
                 </div>
                 <ChevronRight className="h-4 w-4 text-zinc-600 group-hover:text-zinc-300 transition-colors" />
               </button>
@@ -2615,8 +2625,9 @@ export default function Home() {
                   const isMobile = typeof window !== "undefined" && /iphone|ipad|ipod|android/i.test(navigator.userAgent);
                   const hasInjected = typeof window !== "undefined" && typeof (window as any).ethereum !== "undefined";
                   const injConn = connectors.find(c => c.id.toLowerCase().includes("injected")) || connectors[0];
+                  
                   if (isMobile && !hasInjected) {
-                    window.location.href = "https://link.trustwallet.com/open_url?coin_id=60&url=https%3A%2F%2Fwww.gmdexai.xyz";
+                    window.location.href = "trust://open_url?coin_id=60&url=https%3A%2F%2Fwww.gmdexai.xyz";
                     setShowConnectModal(false);
                     return;
                   }
@@ -2629,7 +2640,7 @@ export default function Home() {
                 </div>
                 <div className="flex-1">
                   <p className="text-white font-bold text-sm">Trust Wallet</p>
-                  <p className="text-zinc-400 text-xs">Trust Multi-Chain Wallet</p>
+                  <p className="text-zinc-400 text-xs">Opens Trust Wallet app directly</p>
                 </div>
                 <ChevronRight className="h-4 w-4 text-zinc-600 group-hover:text-zinc-300 transition-colors" />
               </button>
@@ -2641,8 +2652,9 @@ export default function Home() {
                   const isMobile = typeof window !== "undefined" && /iphone|ipad|ipod|android/i.test(navigator.userAgent);
                   const hasInjected = typeof window !== "undefined" && (typeof (window as any).ethereum !== "undefined" || typeof (window as any).okxwallet !== "undefined");
                   const injConn = connectors.find(c => c.id.toLowerCase().includes("injected")) || connectors[0];
+                  
                   if (isMobile && !hasInjected) {
-                    window.location.href = "https://www.okx.com/download?deeplink=okx%3A%2F%2Fwallet%2Fdapp%2Furl%3FdappUrl%3Dhttps%253A%252F%252Fwww.gmdexai.xyz";
+                    window.location.href = "okx://wallet/dapp/url?dappUrl=https%3A%2F%2Fwww.gmdexai.xyz";
                     setShowConnectModal(false);
                     return;
                   }
@@ -2655,7 +2667,7 @@ export default function Home() {
                 </div>
                 <div className="flex-1">
                   <p className="text-white font-bold text-sm">OKX Wallet</p>
-                  <p className="text-zinc-400 text-xs">OKX Web3 Multi-Chain</p>
+                  <p className="text-zinc-400 text-xs">Opens OKX Wallet app directly</p>
                 </div>
                 <ChevronRight className="h-4 w-4 text-zinc-600 group-hover:text-zinc-300 transition-colors" />
               </button>
