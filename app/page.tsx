@@ -2527,6 +2527,7 @@ export default function Home() {
                 disabled={isConnectPending}
                 onClick={() => {
                   const isMobile = typeof window !== "undefined" && /iphone|ipad|ipod|android/i.test(navigator.userAgent);
+                  const isAndroid = typeof window !== "undefined" && /android/i.test(navigator.userAgent);
                   const hasInjected = typeof window !== "undefined" && typeof (window as any).ethereum !== "undefined";
                   const cbConn = connectors.find(c => c.id.toLowerCase().includes("coinbase") || c.name.toLowerCase().includes("coinbase"));
                   
@@ -2535,7 +2536,11 @@ export default function Home() {
                     return;
                   }
                   if (isMobile && !hasInjected) {
-                    window.location.href = "cbwallet://dapp?url=https%3A%2F%2Fwww.gmdexai.xyz";
+                    if (isAndroid) {
+                      window.location.href = "intent://dapp?url=https%3A%2F%2Fwww.gmdexai.xyz#Intent;scheme=cbwallet;package=org.toshi;end;";
+                    } else {
+                      window.location.href = "https://go.cb-w.com/dapp?cb_url=https%3A%2F%2Fwww.gmdexai.xyz";
+                    }
                     setShowConnectModal(false);
                     return;
                   }
@@ -2562,14 +2567,16 @@ export default function Home() {
                 disabled={isConnectPending}
                 onClick={() => {
                   const isMobile = typeof window !== "undefined" && /iphone|ipad|ipod|android/i.test(navigator.userAgent);
+                  const isAndroid = typeof window !== "undefined" && /android/i.test(navigator.userAgent);
                   const hasInjected = typeof window !== "undefined" && typeof (window as any).ethereum !== "undefined";
                   const mmConn = connectors.find(c => c.id.toLowerCase().includes("metamask") || c.name.toLowerCase().includes("metamask")) || connectors.find(c => c.id.toLowerCase().includes("injected"));
                   
                   if (isMobile && !hasInjected) {
-                    window.location.href = "dapp://www.gmdexai.xyz";
-                    setTimeout(() => {
-                      window.location.href = "https://metamask.app.link/dapp/www.gmdexai.xyz";
-                    }, 500);
+                    if (isAndroid) {
+                      window.location.href = "intent://dapp/www.gmdexai.xyz#Intent;scheme=dapp;package=io.metamask;end;";
+                    } else {
+                      window.location.href = "dapp://www.gmdexai.xyz";
+                    }
                     setShowConnectModal(false);
                     return;
                   }
@@ -2593,11 +2600,16 @@ export default function Home() {
                 disabled={isConnectPending}
                 onClick={() => {
                   const isMobile = typeof window !== "undefined" && /iphone|ipad|ipod|android/i.test(navigator.userAgent);
+                  const isAndroid = typeof window !== "undefined" && /android/i.test(navigator.userAgent);
                   const hasInjected = typeof window !== "undefined" && (typeof (window as any).ethereum !== "undefined" || typeof (window as any).bitkeep !== "undefined");
                   const injConn = connectors.find(c => c.id.toLowerCase().includes("injected")) || connectors[0];
                   
                   if (isMobile && !hasInjected) {
-                    window.location.href = "bitkeep://bkconnect?action=dapp&url=https%3A%2F%2Fwww.gmdexai.xyz";
+                    if (isAndroid) {
+                      window.location.href = "intent://bkconnect?action=dapp&url=https%3A%2F%2Fwww.gmdexai.xyz#Intent;scheme=bitkeep;package=com.bitkeep.wallet;end;";
+                    } else {
+                      window.location.href = "bitkeep://bkconnect?action=dapp&url=https%3A%2F%2Fwww.gmdexai.xyz";
+                    }
                     setShowConnectModal(false);
                     return;
                   }
@@ -2623,11 +2635,16 @@ export default function Home() {
                 disabled={isConnectPending}
                 onClick={() => {
                   const isMobile = typeof window !== "undefined" && /iphone|ipad|ipod|android/i.test(navigator.userAgent);
-                  const hasInjected = typeof window !== "undefined" && typeof (window as any).ethereum !== "undefined";
+                  const isAndroid = typeof window !== "undefined" && /android/i.test(navigator.userAgent);
+                  const hasInjected = typeof window !== "undefined" && (typeof (window as any).ethereum !== "undefined" || typeof (window as any).trustwallet !== "undefined");
                   const injConn = connectors.find(c => c.id.toLowerCase().includes("injected")) || connectors[0];
                   
                   if (isMobile && !hasInjected) {
-                    window.location.href = "trust://open_url?coin_id=60&url=https%3A%2F%2Fwww.gmdexai.xyz";
+                    if (isAndroid) {
+                      window.location.href = "intent://open_url?coin_id=60&url=https%3A%2F%2Fwww.gmdexai.xyz#Intent;scheme=trust;package=com.wallet.crypto.trustapp;end;";
+                    } else {
+                      window.location.href = "trust://open_url?coin_id=60&url=https%3A%2F%2Fwww.gmdexai.xyz";
+                    }
                     setShowConnectModal(false);
                     return;
                   }
@@ -2650,11 +2667,16 @@ export default function Home() {
                 disabled={isConnectPending}
                 onClick={() => {
                   const isMobile = typeof window !== "undefined" && /iphone|ipad|ipod|android/i.test(navigator.userAgent);
+                  const isAndroid = typeof window !== "undefined" && /android/i.test(navigator.userAgent);
                   const hasInjected = typeof window !== "undefined" && (typeof (window as any).ethereum !== "undefined" || typeof (window as any).okxwallet !== "undefined");
                   const injConn = connectors.find(c => c.id.toLowerCase().includes("injected")) || connectors[0];
                   
                   if (isMobile && !hasInjected) {
-                    window.location.href = "okx://wallet/dapp/url?dappUrl=https%3A%2F%2Fwww.gmdexai.xyz";
+                    if (isAndroid) {
+                      window.location.href = "intent://wallet/dapp/url?dappUrl=https%3A%2F%2Fwww.gmdexai.xyz#Intent;scheme=okx;package=com.okinc.okex.gp;end;";
+                    } else {
+                      window.location.href = "okx://wallet/dapp/url?dappUrl=https%3A%2F%2Fwww.gmdexai.xyz";
+                    }
                     setShowConnectModal(false);
                     return;
                   }
