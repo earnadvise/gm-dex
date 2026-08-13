@@ -2536,12 +2536,16 @@ export default function Home() {
                     return;
                   }
                   if (isMobile && !hasInjected) {
+                    setShowConnectModal(false);
                     if (isAndroid) {
-                      window.location.href = "intent://dapp?url=https%3A%2F%2Fwww.gmdexai.xyz#Intent;scheme=cbwallet;package=org.toshi;end;";
+                      const link = document.createElement("a");
+                      link.href = "intent://dapp?url=https%3A%2F%2Fwww.gmdexai.xyz#Intent;scheme=cbwallet;package=org.toshi;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;end;";
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
                     } else {
                       window.location.href = "https://go.cb-w.com/dapp?cb_url=https%3A%2F%2Fwww.gmdexai.xyz";
                     }
-                    setShowConnectModal(false);
                     return;
                   }
                   if (cbConn) connect({ connector: cbConn }, { onSuccess: () => setShowConnectModal(false) });
@@ -2572,12 +2576,16 @@ export default function Home() {
                   const mmConn = connectors.find(c => c.id.toLowerCase().includes("metamask") || c.name.toLowerCase().includes("metamask")) || connectors.find(c => c.id.toLowerCase().includes("injected"));
                   
                   if (isMobile && !hasInjected) {
+                    setShowConnectModal(false);
                     if (isAndroid) {
-                      window.location.href = "intent://dapp/www.gmdexai.xyz#Intent;scheme=dapp;package=io.metamask;end;";
+                      const link = document.createElement("a");
+                      link.href = "intent://dapp/www.gmdexai.xyz#Intent;scheme=dapp;package=io.metamask;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;end;";
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
                     } else {
                       window.location.href = "dapp://www.gmdexai.xyz";
                     }
-                    setShowConnectModal(false);
                     return;
                   }
                   if (mmConn) connect({ connector: mmConn }, { onSuccess: () => setShowConnectModal(false) });
@@ -2605,12 +2613,16 @@ export default function Home() {
                   const injConn = connectors.find(c => c.id.toLowerCase().includes("injected")) || connectors[0];
                   
                   if (isMobile && !hasInjected) {
+                    setShowConnectModal(false);
                     if (isAndroid) {
-                      window.location.href = "intent://bkconnect?action=dapp&url=https%3A%2F%2Fwww.gmdexai.xyz#Intent;scheme=bitkeep;package=com.bitkeep.wallet;end;";
+                      const link = document.createElement("a");
+                      link.href = "intent://bkconnect?action=dapp&url=https%3A%2F%2Fwww.gmdexai.xyz#Intent;scheme=bitkeep;package=com.bitkeep.wallet;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;end;";
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
                     } else {
                       window.location.href = "bitkeep://bkconnect?action=dapp&url=https%3A%2F%2Fwww.gmdexai.xyz";
                     }
-                    setShowConnectModal(false);
                     return;
                   }
                   if (injConn) connect({ connector: injConn }, { onSuccess: () => setShowConnectModal(false) });
@@ -2640,12 +2652,16 @@ export default function Home() {
                   const injConn = connectors.find(c => c.id.toLowerCase().includes("injected")) || connectors[0];
                   
                   if (isMobile && !hasInjected) {
+                    setShowConnectModal(false);
                     if (isAndroid) {
-                      window.location.href = "intent://open_url?coin_id=60&url=https%3A%2F%2Fwww.gmdexai.xyz#Intent;scheme=trust;package=com.wallet.crypto.trustapp;end;";
+                      const link = document.createElement("a");
+                      link.href = "intent://open_url?coin_id=60&url=https%3A%2F%2Fwww.gmdexai.xyz#Intent;scheme=trust;package=com.wallet.crypto.trustapp;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;end;";
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
                     } else {
                       window.location.href = "trust://open_url?coin_id=60&url=https%3A%2F%2Fwww.gmdexai.xyz";
                     }
-                    setShowConnectModal(false);
                     return;
                   }
                   if (injConn) connect({ connector: injConn }, { onSuccess: () => setShowConnectModal(false) });
@@ -2672,12 +2688,16 @@ export default function Home() {
                   const injConn = connectors.find(c => c.id.toLowerCase().includes("injected")) || connectors[0];
                   
                   if (isMobile && !hasInjected) {
+                    setShowConnectModal(false);
                     if (isAndroid) {
-                      window.location.href = "intent://wallet/dapp/url?dappUrl=https%3A%2F%2Fwww.gmdexai.xyz#Intent;scheme=okx;package=com.okinc.okex.gp;end;";
+                      const link = document.createElement("a");
+                      link.href = "intent://wallet/dapp/url?dappUrl=https%3A%2F%2Fwww.gmdexai.xyz#Intent;scheme=okx;package=com.okinc.okex.gp;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;end;";
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
                     } else {
                       window.location.href = "okx://wallet/dapp/url?dappUrl=https%3A%2F%2Fwww.gmdexai.xyz";
                     }
-                    setShowConnectModal(false);
                     return;
                   }
                   if (injConn) connect({ connector: injConn }, { onSuccess: () => setShowConnectModal(false) });
