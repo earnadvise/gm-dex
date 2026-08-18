@@ -2501,11 +2501,36 @@ export default function Home() {
       </nav>
 
       {/* Footer */}
-      <footer className="border-t border-white/5 py-5 bg-black/30 pb-20 md:pb-5">
-        <div className="max-w-5xl mx-auto px-4 text-center text-xs text-zinc-600">
-          © 2026 GMDEXAI · Powered by Base & Aerodrome V2
+      <footer className="border-t border-white/5 py-5 bg-black/30 pb-24 md:pb-5">
+        <div className="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-zinc-500">
+          <div>© 2026 GMDEXAI · Powered by Base & Aerodrome V2</div>
+          <a
+            href="https://x.com/earnadvise"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-zinc-400 hover:text-[#01C38E] transition-colors font-semibold"
+          >
+            <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+            </svg>
+            <span>Follow @earnadvise</span>
+          </a>
         </div>
       </footer>
+
+      {/* Floating Bottom-Left X (Twitter) Profile Link */}
+      <a
+        href="https://x.com/earnadvise"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-20 sm:bottom-4 left-4 z-40 flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#0c1222]/90 hover:bg-[#0c1222] border border-white/10 hover:border-[#01C38E]/50 text-xs font-semibold text-zinc-300 hover:text-white backdrop-blur-xl shadow-xl transition-all group cursor-pointer"
+        title="Follow @earnadvise on X"
+      >
+        <svg className="w-3.5 h-3.5 fill-current text-white group-hover:text-[#01C38E] transition-colors" viewBox="0 0 24 24">
+          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+        </svg>
+        <span className="group-hover:text-[#01C38E] transition-colors">@earnadvise</span>
+      </a>
 
       {/* Connect Modal (Rendered at root level to prevent clipping by header backdrop-blur spec) */}
       {showConnectModal && (

@@ -755,6 +755,21 @@ export function AIAgentTerminal() {
               Aerodrome V2 (0.1% Fee)
             </span>
           </div>
+
+          <div className="border-t border-white/[0.06] pt-2.5 flex items-center justify-between">
+            <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Updates & Community</span>
+            <a
+              href="https://x.com/earnadvise"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-zinc-400 hover:text-[#01C38E] flex items-center gap-1.5 transition-colors font-medium"
+            >
+              <svg className="w-3 h-3 fill-current" viewBox="0 0 24 24">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+              </svg>
+              @earnadvise
+            </a>
+          </div>
         </div>
 
         {/* Quick Command Suggestions */}
