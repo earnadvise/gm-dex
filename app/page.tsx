@@ -755,41 +755,21 @@ export default function Home() {
       setTxHash("");
       if (!address) return;
 
+      if (inputToken.address && !isApproved) {
+        setError(`Please approve ${inputToken.symbol} first before swapping.`);
+        return;
+      }
+
       const activeSlippage = customSlippage && !isNaN(Number(customSlippage)) ? Number(customSlippage) : slippage;
       const minSlippageBps = BigInt(Math.max(1, Math.floor((100 - activeSlippage) * 100)));
       const amountIn = amountWei;
-      const amountOutMin = finalOutWei > 0n ? (finalOutWei * minSlippageBps) / 10000n : 0n;
+
+      // Safe slippage threshold for custom tokens or active pools (allow at least 5% slippage floor for custom/imported tokens)
+      const isCustomTok = !SUPPORTED_TOKENS.some(t => t.address.toLowerCase() === (inputToken.address || "").toLowerCase()) ||
+                          !SUPPORTED_TOKENS.some(t => t.address.toLowerCase() === (outputToken.address || "").toLowerCase());
+      const effectiveSlippageBps = isCustomTok ? BigInt(Math.min(Number(minSlippageBps), 9500)) : minSlippageBps;
+      const amountOutMin = finalOutWei > 0n ? (finalOutWei * effectiveSlippageBps) / 10000n : 0n;
       const deadline = BigInt(Math.floor(Date.now() / 1000) + (deadlineMinutes || 20) * 60);
-
-      // Pre-flight check: If swapping ERC20 token, ensure sufficient on-chain allowance
-      if (inputToken.address) {
-        let currentAllowance = 0n;
-        if (publicClient && address) {
-          try {
-            currentAllowance = (await publicClient.readContract({
-              address: inputToken.address as `0x${string}`,
-              abi: ERC20_ABI,
-              functionName: "allowance",
-              args: [address, GM_DEX_ROUTER],
-            })) as bigint;
-          } catch (e) {
-            console.warn("Live allowance check failed:", e);
-          }
-        }
-
-        if (currentAllowance < amountIn) {
-          const approveHash = await approveToken({
-            address: inputToken.address as `0x${string}`,
-            abi: ERC20_ABI,
-            functionName: "approve",
-            args: [GM_DEX_ROUTER, amountIn],
-          });
-          if (publicClient && approveHash) {
-            await publicClient.waitForTransactionReceipt({ hash: approveHash });
-          }
-          await refetchAllowance();
-        }
-      }
 
       let rawData: Hex;
       let value = 0n;
