@@ -26,46 +26,37 @@ import {
   Terminal,
 } from "lucide-react";
 
-const AERO_ROUTER = "0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43" as `0x${string}`;
-const AERO_FACTORY = "0x420DD381b31aEf6683db6B902084cB0FFECe40Da" as `0x${string}`;
+const GM_DEX_ROUTER = "0x9dc3BBdB8817309ba42b79cc357EC6Be47030B70" as `0x${string}`;
 const WETH = "0x4200000000000000000000000000000000000006";
 
-const AERO_ROUTER_ABI = [
+const ERC20_ABI = [
   {
-    inputs: [
-      { name: "amountIn", type: "uint256" },
-      { name: "amountOutMin", type: "uint256" },
-      {
-        components: [
-          { name: "from", type: "address" },
-          { name: "to", type: "address" },
-          { name: "stable", type: "bool" },
-          { name: "factory", type: "address" },
-        ],
-        name: "routes",
-        type: "tuple[]",
-      },
-      { name: "to", type: "address" },
-      { name: "deadline", type: "uint256" },
-    ],
-    name: "swapExactTokensForTokens",
-    outputs: [{ name: "amounts", type: "uint256[]" }],
-    stateMutability: "nonpayable",
+    name: "approve",
     type: "function",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "spender", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    outputs: [{ name: "", type: "bool" }],
   },
   {
+    name: "allowance",
+    type: "function",
+    stateMutability: "view",
+    inputs: [
+      { name: "owner", type: "address" },
+      { name: "spender", type: "address" },
+    ],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+] as const;
+
+const ROUTER_ABI = [
+  {
     inputs: [
       { name: "amountOutMin", type: "uint256" },
-      {
-        components: [
-          { name: "from", type: "address" },
-          { name: "to", type: "address" },
-          { name: "stable", type: "bool" },
-          { name: "factory", type: "address" },
-        ],
-        name: "routes",
-        type: "tuple[]",
-      },
+      { name: "path", type: "address[]" },
       { name: "to", type: "address" },
       { name: "deadline", type: "uint256" },
     ],
@@ -78,20 +69,24 @@ const AERO_ROUTER_ABI = [
     inputs: [
       { name: "amountIn", type: "uint256" },
       { name: "amountOutMin", type: "uint256" },
-      {
-        components: [
-          { name: "from", type: "address" },
-          { name: "to", type: "address" },
-          { name: "stable", type: "bool" },
-          { name: "factory", type: "address" },
-        ],
-        name: "routes",
-        type: "tuple[]",
-      },
+      { name: "path", type: "address[]" },
       { name: "to", type: "address" },
       { name: "deadline", type: "uint256" },
     ],
     name: "swapExactTokensForETH",
+    outputs: [{ name: "amounts", type: "uint256[]" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { name: "amountIn", type: "uint256" },
+      { name: "amountOutMin", type: "uint256" },
+      { name: "path", type: "address[]" },
+      { name: "to", type: "address" },
+      { name: "deadline", type: "uint256" },
+    ],
+    name: "swapExactTokensForTokens",
     outputs: [{ name: "amounts", type: "uint256[]" }],
     stateMutability: "nonpayable",
     type: "function",
@@ -250,20 +245,9 @@ export function AIAgentTerminal() {
           try {
             currentAllowance = (await publicClient.readContract({
               address: inputToken.address as `0x${string}`,
-              abi: [
-                {
-                  name: "allowance",
-                  type: "function",
-                  stateMutability: "view",
-                  inputs: [
-                    { name: "owner", type: "address" },
-                    { name: "spender", type: "address" },
-                  ],
-                  outputs: [{ name: "", type: "uint256" }],
-                },
-              ] as const,
+              abi: ERC20_ABI,
               functionName: "allowance",
-              args: [address, AERO_ROUTER],
+              args: [address, GM_DEX_ROUTER],
             })) as bigint;
           } catch (e) {
             console.warn("Allowance check failed:", e);
@@ -276,27 +260,16 @@ export function AIAgentTerminal() {
             {
               id: Date.now().toString(),
               sender: "agent",
-              text: `⏳ **Approval Required**: Approving exact **${amount} ${inputToken.symbol}** for Aerodrome Router...`,
+              text: `⏳ **Approval Required**: Approving exact **${amount} ${inputToken.symbol}** for GMDEXAI Router...`,
               timestamp: "Just now",
             },
           ]);
 
           const approveHash = await approveToken({
             address: inputToken.address as `0x${string}`,
-            abi: [
-              {
-                name: "approve",
-                type: "function",
-                stateMutability: "nonpayable",
-                inputs: [
-                  { name: "spender", type: "address" },
-                  { name: "amount", type: "uint256" },
-                ],
-                outputs: [{ name: "", type: "bool" }],
-              },
-            ] as const,
+            abi: ERC20_ABI,
             functionName: "approve",
-            args: [AERO_ROUTER, amountWei],
+            args: [GM_DEX_ROUTER, amountWei],
           });
 
           if (publicClient && approveHash) {
@@ -315,28 +288,16 @@ export function AIAgentTerminal() {
         }
       }
 
-      // Build Aerodrome Swap Path
+      // Build Swap Path
       const inAddr = (inputToken.address || WETH) as `0x${string}`;
       const outAddr = (outputToken.address || WETH) as `0x${string}`;
-      const USDC_ADDR = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
-
-      const aeroRoutes = [];
-      if (!inputToken.address || !outputToken.address) {
-        aeroRoutes.push({ from: inAddr, to: outAddr, stable: false, factory: AERO_FACTORY });
-      } else {
-        const inIsUsdc = inAddr.toLowerCase() === USDC_ADDR.toLowerCase();
-        const outIsUsdc = outAddr.toLowerCase() === USDC_ADDR.toLowerCase();
-        if (inIsUsdc || outIsUsdc) {
-          aeroRoutes.push({ from: inAddr, to: outAddr, stable: false, factory: AERO_FACTORY });
-        } else {
-          aeroRoutes.push({ from: inAddr, to: USDC_ADDR as `0x${string}`, stable: false, factory: AERO_FACTORY });
-          aeroRoutes.push({ from: USDC_ADDR as `0x${string}`, to: outAddr, stable: false, factory: AERO_FACTORY });
-        }
-      }
+      const path = (!inputToken.address || !outputToken.address)
+        ? [inAddr, outAddr]
+        : [inAddr, WETH as `0x${string}`, outAddr];
 
       const deadline = BigInt(Math.floor(Date.now() / 1000) + 1200);
 
-      // Estimate output quote for minimum received with 1% slippage
+      // Estimate output quote for minimum received with 5% safety buffer
       const inSym = inputToken.symbol.toUpperCase();
       const outSym = outputToken.symbol.toUpperCase();
       const rateIn = livePrices[inSym] || livePrices[inSym === "WETH" ? "ETH" : inSym] || 1.0;
@@ -344,7 +305,7 @@ export function AIAgentTerminal() {
       const inNum = Number(amountWei) / (10 ** inputToken.decimals);
       const estOutNum = (inNum * rateIn) / rateOut;
       const estOutWei = parseAmt(estOutNum.toFixed(outputToken.decimals), outputToken.decimals);
-      const amountOutMin = (estOutWei * 95n) / 100n; // 5% safe slippage floor for AI execution
+      const amountOutMin = (estOutWei * 90n) / 100n; // 10% safe slippage floor for AI execution
 
       let rawData: Hex;
       let value = 0n;
@@ -352,24 +313,24 @@ export function AIAgentTerminal() {
       if (!inputToken.address) {
         // ETH -> Token
         rawData = encodeFunctionData({
-          abi: AERO_ROUTER_ABI,
+          abi: ROUTER_ABI,
           functionName: "swapExactETHForTokens",
-          args: [amountOutMin, aeroRoutes, address, deadline],
+          args: [amountOutMin, path, address, deadline],
         });
         value = amountWei;
       } else if (!outputToken.address) {
         // Token -> ETH
         rawData = encodeFunctionData({
-          abi: AERO_ROUTER_ABI,
+          abi: ROUTER_ABI,
           functionName: "swapExactTokensForETH",
-          args: [amountWei, amountOutMin, aeroRoutes, address, deadline],
+          args: [amountWei, amountOutMin, path, address, deadline],
         });
       } else {
         // Token -> Token
         rawData = encodeFunctionData({
-          abi: AERO_ROUTER_ABI,
+          abi: ROUTER_ABI,
           functionName: "swapExactTokensForTokens",
-          args: [amountWei, amountOutMin, aeroRoutes, address, deadline],
+          args: [amountWei, amountOutMin, path, address, deadline],
         });
       }
 
@@ -378,7 +339,7 @@ export function AIAgentTerminal() {
 
       // Trigger EVM Transaction
       const txHash = await sendTransactionAsync({
-        to: AERO_ROUTER,
+        to: GM_DEX_ROUTER,
         data: dataWithBuilder as Hex,
         value,
       });

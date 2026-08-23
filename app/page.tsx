@@ -681,8 +681,8 @@ export default function Home() {
   const amountWei = parseAmt(amount, inputToken.decimals);
   const USDC_ADDR = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as `0x${string}`;
 
-  // Target Router is ALWAYS Aerodrome V2 Router for deep liquidity on Base
-  const targetRouter = AERO_ROUTER;
+  // Target Router is original GM_DEX_ROUTER contract for grant evaluators & 0.1% Treasury Fee
+  const targetRouter = GM_DEX_ROUTER;
 
   // Candidate paths for Base L2 liquidity routing
   const pathDirect: `0x${string}`[] = [
@@ -700,97 +700,55 @@ export default function Home() {
     (outputToken.address || WETH) as `0x${string}`,
   ];
 
-  // Aerodrome Route builder
-  const getAeroRoutes = (pathAddresses: `0x${string}`[]) => {
-    const routes = [];
-    for (let i = 0; i < pathAddresses.length - 1; i++) {
-      const from = pathAddresses[i];
-      const to = pathAddresses[i + 1];
-      const fromSym = [inputToken, outputToken].find(t => (t.address || WETH).toLowerCase() === from.toLowerCase())?.symbol;
-      const toSym = [inputToken, outputToken].find(t => (t.address || WETH).toLowerCase() === to.toLowerCase())?.symbol;
-      const isStablePair = (fromSym === "USDC" && toSym === "EURC") || (fromSym === "EURC" && toSym === "USDC") ||
-                           (fromSym === "USDC" && toSym === "USDT") || (fromSym === "USDT" && toSym === "USDC");
-      routes.push({
-        from,
-        to,
-        stable: isStablePair,
-        factory: AERO_FACTORY,
-      });
-    }
-    return routes;
-  };
-
-  const aeroRoutesDirect = getAeroRoutes(pathDirect);
-  const aeroRoutesUSDC = getAeroRoutes(pathUSDC);
-  const aeroRoutesWETH = getAeroRoutes(pathWETH);
-
-  // Aerodrome Router Quotes (Direct, USDC-hop, WETH-hop)
-  const { data: amountsOutAeroDirect, isLoading: isQuoteLoadingAero } = useReadContract({
-    address: AERO_ROUTER,
-    abi: AERO_ROUTER_ABI,
+  // Router Quotes via Uniswap V2 Router on Base
+  const { data: amountsOutDirect, isLoading: isQuoteLoadingDirect } = useReadContract({
+    address: UNISWAP_V2_ROUTER,
+    abi: ROUTER_ABI,
     functionName: "getAmountsOut",
-    args: amountWei > 0n ? [amountWei, aeroRoutesDirect] : undefined,
+    args: amountWei > 0n ? [amountWei, pathDirect] : undefined,
     query: { enabled: amountWei > 0n },
   });
 
-  const { data: amountsOutAeroUSDC } = useReadContract({
-    address: AERO_ROUTER,
-    abi: AERO_ROUTER_ABI,
+  const { data: amountsOutUSDC } = useReadContract({
+    address: UNISWAP_V2_ROUTER,
+    abi: ROUTER_ABI,
     functionName: "getAmountsOut",
-    args: amountWei > 0n && !!inputToken.address && !!outputToken.address ? [amountWei, aeroRoutesUSDC] : undefined,
+    args: amountWei > 0n && !!inputToken.address && !!outputToken.address ? [amountWei, pathUSDC] : undefined,
     query: { enabled: amountWei > 0n && !!inputToken.address && !!outputToken.address },
   });
 
-  const { data: amountsOutAeroWETH } = useReadContract({
-    address: AERO_ROUTER,
-    abi: AERO_ROUTER_ABI,
-    functionName: "getAmountsOut",
-    args: amountWei > 0n && !!inputToken.address && !!outputToken.address ? [amountWei, aeroRoutesWETH] : undefined,
-    query: { enabled: amountWei > 0n && !!inputToken.address && !!outputToken.address },
-  });
+  const outDirect = amountsOutDirect ? (amountsOutDirect as bigint[])[amountsOutDirect.length - 1] : 0n;
+  const outUSDC = amountsOutUSDC ? (amountsOutUSDC as bigint[])[amountsOutUSDC.length - 1] : 0n;
 
-  const outAeroDirect = amountsOutAeroDirect ? (amountsOutAeroDirect as bigint[])[amountsOutAeroDirect.length - 1] : 0n;
-  const outAeroUSDC = amountsOutAeroUSDC ? (amountsOutAeroUSDC as bigint[])[amountsOutAeroUSDC.length - 1] : 0n;
-  const outAeroWETH = amountsOutAeroWETH ? (amountsOutAeroWETH as bigint[])[amountsOutAeroWETH.length - 1] : 0n;
-
-  // Determine best path & output for Aerodrome router
+  // Determine best path for GM_DEX_ROUTER contract execution
   const getBestPathInfo = () => {
     let bestVal = 0n;
-    let bestRoutes = aeroRoutesDirect;
-    let bestPath = pathDirect;
+    let bestP = pathDirect;
 
     if (!inputToken.address || !outputToken.address) {
-      return { path: pathDirect, aeroRoutes: aeroRoutesDirect, outWei: outAeroDirect };
+      return { path: pathDirect, outWei: outDirect };
     }
 
-    if (outAeroDirect > bestVal) {
-      bestVal = outAeroDirect;
-      bestRoutes = aeroRoutesDirect;
-      bestPath = pathDirect;
+    if (outDirect > bestVal) {
+      bestVal = outDirect;
+      bestP = pathDirect;
     }
-    if (outAeroUSDC > bestVal) {
-      bestVal = outAeroUSDC;
-      bestRoutes = aeroRoutesUSDC;
-      bestPath = pathUSDC;
-    }
-    if (outAeroWETH > bestVal) {
-      bestVal = outAeroWETH;
-      bestRoutes = aeroRoutesWETH;
-      bestPath = pathWETH;
+    if (outUSDC > bestVal) {
+      bestVal = outUSDC;
+      bestP = pathUSDC;
     }
 
     if (bestVal === 0n) {
       const inIsUsdc = inputToken.address?.toLowerCase() === USDC_ADDR.toLowerCase();
       const outIsUsdc = outputToken.address?.toLowerCase() === USDC_ADDR.toLowerCase();
-      bestPath = inIsUsdc || outIsUsdc ? pathDirect : pathUSDC;
-      bestRoutes = inIsUsdc || outIsUsdc ? aeroRoutesDirect : aeroRoutesUSDC;
+      bestP = inIsUsdc || outIsUsdc ? pathDirect : pathUSDC;
     }
 
-    return { path: bestPath, aeroRoutes: bestRoutes, outWei: bestVal };
+    return { path: bestP, outWei: bestVal };
   };
 
-  const { path, aeroRoutes: bestAeroRoutes, outWei } = getBestPathInfo();
-  const isQuoteLoading = isQuoteLoadingAero;
+  const { path, outWei } = getBestPathInfo();
+  const isQuoteLoading = isQuoteLoadingDirect;
 
   const { prices: livePrices, fetchCustomTokenPrice } = useTokenPrices();
 
@@ -879,36 +837,37 @@ export default function Home() {
       const minSlippageBps = BigInt(Math.max(1, Math.floor((100 - activeSlippage) * 100)));
       const amountIn = amountWei;
 
-      // If live on-chain quote (outWei) is available, apply user slippage to outWei.
-      // If falling back to off-chain price estimate, use 5% safety buffer to prevent INSUFFICIENT_OUTPUT_AMOUNT reverts.
+      // Safe slippage threshold: if outWei > 0n, use on-chain quote slippage; if estimated quote, use 10% safety buffer so contract execution never reverts!
       const amountOutMin = outWei > 0n 
         ? (outWei * minSlippageBps) / 10000n 
-        : (finalOutWei * 9500n) / 10000n;
+        : (finalOutWei * 9000n) / 10000n;
 
       const deadline = BigInt(Math.floor(Date.now() / 1000) + (deadlineMinutes || 20) * 60);
 
       let rawData: Hex;
       let value = 0n;
 
-      // Execute 100% through Aerodrome V2 Router for $500M+ deep liquidity
       if (!inputToken.address) {
+        // ETH -> Token via GM_DEX_ROUTER
         rawData = encodeFunctionData({
-          abi: AERO_ROUTER_ABI,
+          abi: ROUTER_ABI,
           functionName: "swapExactETHForTokens",
-          args: [amountOutMin, bestAeroRoutes, address, deadline],
+          args: [amountOutMin, path, address, deadline],
         });
         value = amountIn;
       } else if (!outputToken.address) {
+        // Token -> ETH via GM_DEX_ROUTER
         rawData = encodeFunctionData({
-          abi: AERO_ROUTER_ABI,
+          abi: ROUTER_ABI,
           functionName: "swapExactTokensForETH",
-          args: [amountIn, amountOutMin, bestAeroRoutes, address, deadline],
+          args: [amountIn, amountOutMin, path, address, deadline],
         });
       } else {
+        // Token -> Token via GM_DEX_ROUTER
         rawData = encodeFunctionData({
-          abi: AERO_ROUTER_ABI,
+          abi: ROUTER_ABI,
           functionName: "swapExactTokensForTokens",
-          args: [amountIn, amountOutMin, bestAeroRoutes, address, deadline],
+          args: [amountIn, amountOutMin, path, address, deadline],
         });
       }
 
