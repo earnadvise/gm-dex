@@ -449,6 +449,9 @@ export default function Home() {
     } catch (e) {
       console.error(e);
     }
+    if (newTok.address) {
+      fetchCustomTokenPrice(newTok.address);
+    }
     if (tokenModalTarget === "input") setInputToken(newTok);
     if (tokenModalTarget === "output") setOutputToken(newTok);
     if (tokenModalTarget === "poolA") setPoolTokenA(newTok);
@@ -615,17 +618,32 @@ export default function Home() {
 
   const outWei = amountsOut ? (amountsOut as bigint[])[amountsOut.length - 1] : 0n;
 
-  const { prices: livePrices } = useTokenPrices();
+  const { prices: livePrices, fetchCustomTokenPrice } = useTokenPrices();
+
+  // Auto-fetch real-time USD price from DexScreener for any imported/custom token
+  useEffect(() => {
+    if (inputToken.address && !livePrices[inputToken.address.toLowerCase()]) {
+      fetchCustomTokenPrice(inputToken.address);
+    }
+    if (outputToken.address && !livePrices[outputToken.address.toLowerCase()]) {
+      fetchCustomTokenPrice(outputToken.address);
+    }
+  }, [inputToken.address, outputToken.address, livePrices, fetchCustomTokenPrice]);
 
   const getEstimatedQuote = (): bigint => {
     if (outWei > 0n) return outWei;
     if (amountWei === 0n) return 0n;
 
+    const inAddr = inputToken.address ? inputToken.address.toLowerCase() : "";
+    const outAddr = outputToken.address ? outputToken.address.toLowerCase() : "";
     const inSym = inputToken.symbol.toUpperCase();
     const outSym = outputToken.symbol.toUpperCase();
 
-    const rateInUsd = livePrices[inSym] || livePrices[inSym === "WETH" ? "ETH" : inSym] || 1.0;
-    const rateOutUsd = livePrices[outSym] || livePrices[outSym === "WETH" ? "ETH" : outSym] || 1.0;
+    const rateInUsd = (inAddr && livePrices[inAddr]) || livePrices[inSym] || livePrices[inSym === "WETH" ? "ETH" : inSym] || (inputToken.symbol === "ETH" ? 1885 : 0);
+    const rateOutUsd = (outAddr && livePrices[outAddr]) || livePrices[outSym] || livePrices[outSym === "WETH" ? "ETH" : outSym] || (outputToken.symbol === "ETH" ? 1885 : 0);
+
+    // If real USD price is missing for either token, return 0n (NEVER default to 1.0 = 1.0)
+    if (!rateInUsd || !rateOutUsd || rateInUsd <= 0 || rateOutUsd <= 0) return 0n;
 
     const inAmtNumber = Number(amountWei) / (10 ** inputToken.decimals);
     const outAmtNumber = (inAmtNumber * rateInUsd) / rateOutUsd;
