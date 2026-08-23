@@ -681,12 +681,8 @@ export default function Home() {
   const amountWei = parseAmt(amount, inputToken.decimals);
   const USDC_ADDR = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as `0x${string}`;
 
-  // Check if swapping standard grant-supported tokens (ETH, WETH, USDC, USDT, EURC, cbBTC)
-  const GRANT_TOKENS = ["ETH", "WETH", "USDC", "USDT", "EURC", "CBBTC"];
-  const isGrantSwap = GRANT_TOKENS.includes(inputToken.symbol.toUpperCase()) &&
-                      GRANT_TOKENS.includes(outputToken.symbol.toUpperCase());
-
-  const targetRouter = isGrantSwap ? GM_DEX_ROUTER : AERO_ROUTER;
+  // Target Router is ALWAYS Aerodrome V2 Router for deep liquidity on Base
+  const targetRouter = AERO_ROUTER;
 
   // Candidate paths for Base L2 liquidity routing
   const pathDirect: `0x${string}`[] = [
@@ -728,13 +724,13 @@ export default function Home() {
   const aeroRoutesUSDC = getAeroRoutes(pathUSDC);
   const aeroRoutesWETH = getAeroRoutes(pathWETH);
 
-  // Aerodrome Router Quotes
+  // Aerodrome Router Quotes (Direct, USDC-hop, WETH-hop)
   const { data: amountsOutAeroDirect, isLoading: isQuoteLoadingAero } = useReadContract({
     address: AERO_ROUTER,
     abi: AERO_ROUTER_ABI,
     functionName: "getAmountsOut",
     args: amountWei > 0n ? [amountWei, aeroRoutesDirect] : undefined,
-    query: { enabled: amountWei > 0n && !isGrantSwap },
+    query: { enabled: amountWei > 0n },
   });
 
   const { data: amountsOutAeroUSDC } = useReadContract({
@@ -742,7 +738,7 @@ export default function Home() {
     abi: AERO_ROUTER_ABI,
     functionName: "getAmountsOut",
     args: amountWei > 0n && !!inputToken.address && !!outputToken.address ? [amountWei, aeroRoutesUSDC] : undefined,
-    query: { enabled: amountWei > 0n && !!inputToken.address && !!outputToken.address && !isGrantSwap },
+    query: { enabled: amountWei > 0n && !!inputToken.address && !!outputToken.address },
   });
 
   const { data: amountsOutAeroWETH } = useReadContract({
@@ -750,29 +746,15 @@ export default function Home() {
     abi: AERO_ROUTER_ABI,
     functionName: "getAmountsOut",
     args: amountWei > 0n && !!inputToken.address && !!outputToken.address ? [amountWei, aeroRoutesWETH] : undefined,
-    query: { enabled: amountWei > 0n && !!inputToken.address && !!outputToken.address && !isGrantSwap },
-  });
-
-  // Grant Contract (GM_DEX_ROUTER) Quotes
-  const { data: amountsOutUniDirect, isLoading: isQuoteLoadingUni } = useReadContract({
-    address: UNISWAP_V2_ROUTER,
-    abi: ROUTER_ABI,
-    functionName: "getAmountsOut",
-    args: amountWei > 0n ? [amountWei, pathDirect] : undefined,
-    query: { enabled: amountWei > 0n && isGrantSwap },
+    query: { enabled: amountWei > 0n && !!inputToken.address && !!outputToken.address },
   });
 
   const outAeroDirect = amountsOutAeroDirect ? (amountsOutAeroDirect as bigint[])[amountsOutAeroDirect.length - 1] : 0n;
   const outAeroUSDC = amountsOutAeroUSDC ? (amountsOutAeroUSDC as bigint[])[amountsOutAeroUSDC.length - 1] : 0n;
   const outAeroWETH = amountsOutAeroWETH ? (amountsOutAeroWETH as bigint[])[amountsOutAeroWETH.length - 1] : 0n;
-  const outUniDirect = amountsOutUniDirect ? (amountsOutUniDirect as bigint[])[amountsOutUniDirect.length - 1] : 0n;
 
-  // Determine best path & output for active router
+  // Determine best path & output for Aerodrome router
   const getBestPathInfo = () => {
-    if (isGrantSwap) {
-      return { path: pathDirect, aeroRoutes: aeroRoutesDirect, outWei: outUniDirect };
-    }
-
     let bestVal = 0n;
     let bestRoutes = aeroRoutesDirect;
     let bestPath = pathDirect;
@@ -808,7 +790,7 @@ export default function Home() {
   };
 
   const { path, aeroRoutes: bestAeroRoutes, outWei } = getBestPathInfo();
-  const isQuoteLoading = isGrantSwap ? isQuoteLoadingUni : isQuoteLoadingAero;
+  const isQuoteLoading = isQuoteLoadingAero;
 
   const { prices: livePrices, fetchCustomTokenPrice } = useTokenPrices();
 
@@ -908,50 +890,26 @@ export default function Home() {
       let rawData: Hex;
       let value = 0n;
 
-      if (isGrantSwap) {
-        // Execute through Grant Contract (GM_DEX_ROUTER) for Grant evaluators & 0.1% Treasury Fee
-        if (!inputToken.address) {
-          rawData = encodeFunctionData({
-            abi: ROUTER_ABI,
-            functionName: "swapExactETHForTokens",
-            args: [amountOutMin, path, address, deadline],
-          });
-          value = amountIn;
-        } else if (!outputToken.address) {
-          rawData = encodeFunctionData({
-            abi: ROUTER_ABI,
-            functionName: "swapExactTokensForETH",
-            args: [amountIn, amountOutMin, path, address, deadline],
-          });
-        } else {
-          rawData = encodeFunctionData({
-            abi: ROUTER_ABI,
-            functionName: "swapExactTokensForTokens",
-            args: [amountIn, amountOutMin, path, address, deadline],
-          });
-        }
+      // Execute 100% through Aerodrome V2 Router for $500M+ deep liquidity
+      if (!inputToken.address) {
+        rawData = encodeFunctionData({
+          abi: AERO_ROUTER_ABI,
+          functionName: "swapExactETHForTokens",
+          args: [amountOutMin, bestAeroRoutes, address, deadline],
+        });
+        value = amountIn;
+      } else if (!outputToken.address) {
+        rawData = encodeFunctionData({
+          abi: AERO_ROUTER_ABI,
+          functionName: "swapExactTokensForETH",
+          args: [amountIn, amountOutMin, bestAeroRoutes, address, deadline],
+        });
       } else {
-        // Execute through Aerodrome V2 Router for Custom / Aerodrome Tokens
-        if (!inputToken.address) {
-          rawData = encodeFunctionData({
-            abi: AERO_ROUTER_ABI,
-            functionName: "swapExactETHForTokens",
-            args: [amountOutMin, bestAeroRoutes, address, deadline],
-          });
-          value = amountIn;
-        } else if (!outputToken.address) {
-          rawData = encodeFunctionData({
-            abi: AERO_ROUTER_ABI,
-            functionName: "swapExactTokensForETH",
-            args: [amountIn, amountOutMin, bestAeroRoutes, address, deadline],
-          });
-        } else {
-          rawData = encodeFunctionData({
-            abi: AERO_ROUTER_ABI,
-            functionName: "swapExactTokensForTokens",
-            args: [amountIn, amountOutMin, bestAeroRoutes, address, deadline],
-          });
-        }
+        rawData = encodeFunctionData({
+          abi: AERO_ROUTER_ABI,
+          functionName: "swapExactTokensForTokens",
+          args: [amountIn, amountOutMin, bestAeroRoutes, address, deadline],
+        });
       }
 
       // ✅ Append Builder Code for attribution tracking!
