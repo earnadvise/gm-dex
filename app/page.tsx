@@ -746,73 +746,34 @@ export default function Home() {
     query: { enabled: amountWei > 0n && !!inputToken.address && !!outputToken.address },
   });
 
-  // Uniswap V2 Router Fallback Quotes
-  const { data: amountsOutUniDirect } = useReadContract({
-    address: UNISWAP_V2_ROUTER,
-    abi: ROUTER_ABI,
-    functionName: "getAmountsOut",
-    args: amountWei > 0n ? [amountWei, pathDirect] : undefined,
-    query: { enabled: amountWei > 0n },
-  });
-
-  const { data: amountsOutUniUSDC } = useReadContract({
-    address: UNISWAP_V2_ROUTER,
-    abi: ROUTER_ABI,
-    functionName: "getAmountsOut",
-    args: amountWei > 0n && !!inputToken.address && !!outputToken.address ? [amountWei, pathUSDC] : undefined,
-    query: { enabled: amountWei > 0n && !!inputToken.address && !!outputToken.address },
-  });
-
   const outAeroDirect = amountsOutAeroDirect ? (amountsOutAeroDirect as bigint[])[amountsOutAeroDirect.length - 1] : 0n;
   const outAeroUSDC = amountsOutAeroUSDC ? (amountsOutAeroUSDC as bigint[])[amountsOutAeroUSDC.length - 1] : 0n;
   const outAeroWETH = amountsOutAeroWETH ? (amountsOutAeroWETH as bigint[])[amountsOutAeroWETH.length - 1] : 0n;
-  const outUniDirect = amountsOutUniDirect ? (amountsOutUniDirect as bigint[])[amountsOutUniDirect.length - 1] : 0n;
-  const outUniUSDC = amountsOutUniUSDC ? (amountsOutUniUSDC as bigint[])[amountsOutUniUSDC.length - 1] : 0n;
 
-  // Determine best path & router with real on-chain liquidity
+  // Determine best path on Aerodrome Router with real on-chain liquidity
   const getBestPathInfo = () => {
     let bestVal = 0n;
     let bestRoutes = aeroRoutesDirect;
     let bestPath = pathDirect;
-    let routerType: "AERO" | "UNI" = "AERO";
 
     if (!inputToken.address || !outputToken.address) {
-      if (outAeroDirect >= outUniDirect && outAeroDirect > 0n) {
-        return { path: pathDirect, aeroRoutes: aeroRoutesDirect, outWei: outAeroDirect, routerType: "AERO" as const };
-      }
-      if (outUniDirect > 0n) {
-        return { path: pathDirect, aeroRoutes: aeroRoutesDirect, outWei: outUniDirect, routerType: "UNI" as const };
-      }
-      return { path: pathDirect, aeroRoutes: aeroRoutesDirect, outWei: outAeroDirect, routerType: "AERO" as const };
+      return { path: pathDirect, aeroRoutes: aeroRoutesDirect, outWei: outAeroDirect };
     }
 
     if (outAeroDirect > bestVal) {
       bestVal = outAeroDirect;
       bestRoutes = aeroRoutesDirect;
       bestPath = pathDirect;
-      routerType = "AERO";
     }
     if (outAeroUSDC > bestVal) {
       bestVal = outAeroUSDC;
       bestRoutes = aeroRoutesUSDC;
       bestPath = pathUSDC;
-      routerType = "AERO";
     }
     if (outAeroWETH > bestVal) {
       bestVal = outAeroWETH;
       bestRoutes = aeroRoutesWETH;
       bestPath = pathWETH;
-      routerType = "AERO";
-    }
-    if (outUniDirect > bestVal) {
-      bestVal = outUniDirect;
-      bestPath = pathDirect;
-      routerType = "UNI";
-    }
-    if (outUniUSDC > bestVal) {
-      bestVal = outUniUSDC;
-      bestPath = pathUSDC;
-      routerType = "UNI";
     }
 
     if (bestVal === 0n) {
@@ -822,10 +783,10 @@ export default function Home() {
       bestRoutes = inIsUsdc || outIsUsdc ? aeroRoutesDirect : aeroRoutesUSDC;
     }
 
-    return { path: bestPath, aeroRoutes: bestRoutes, outWei: bestVal, routerType };
+    return { path: bestPath, aeroRoutes: bestRoutes, outWei: bestVal };
   };
 
-  const { path, aeroRoutes: bestAeroRoutes, outWei, routerType: activeRouterType } = getBestPathInfo();
+  const { path, aeroRoutes: bestAeroRoutes, outWei } = getBestPathInfo();
   const isQuoteLoading = isQuoteLoadingAero;
 
   const { prices: livePrices, fetchCustomTokenPrice } = useTokenPrices();
@@ -865,8 +826,8 @@ export default function Home() {
   const rawDisplayOut = finalOutWei > 0n ? fmtAmt(finalOutWei, outputToken.decimals) : "";
   const displayOut = rawDisplayOut ? parseFloat(rawDisplayOut).toFixed(6).replace(/\.?0+$/, "") : "";
 
-  // Allowance for active router (Aerodrome Router default)
-  const targetRouter = activeRouterType === "UNI" ? GM_DEX_ROUTER : AERO_ROUTER;
+  // Target Router is ALWAYS Aerodrome V2 Router
+  const targetRouter = AERO_ROUTER;
 
   const { data: allowance, refetch: refetchAllowance } = useReadContract({
     address: inputToken.address as `0x${string}`,
@@ -929,54 +890,28 @@ export default function Home() {
       let rawData: Hex;
       let value = 0n;
 
-      if (activeRouterType === "AERO") {
-        if (!inputToken.address) {
-          // ETH -> Token via Aerodrome Router
-          rawData = encodeFunctionData({
-            abi: AERO_ROUTER_ABI,
-            functionName: "swapExactETHForTokens",
-            args: [amountOutMin, bestAeroRoutes, address, deadline],
-          });
-          value = amountIn;
-        } else if (!outputToken.address) {
-          // Token -> ETH via Aerodrome Router
-          rawData = encodeFunctionData({
-            abi: AERO_ROUTER_ABI,
-            functionName: "swapExactTokensForETH",
-            args: [amountIn, amountOutMin, bestAeroRoutes, address, deadline],
-          });
-        } else {
-          // Token -> Token via Aerodrome Router
-          rawData = encodeFunctionData({
-            abi: AERO_ROUTER_ABI,
-            functionName: "swapExactTokensForTokens",
-            args: [amountIn, amountOutMin, bestAeroRoutes, address, deadline],
-          });
-        }
+      if (!inputToken.address) {
+        // ETH -> Token via Aerodrome Router
+        rawData = encodeFunctionData({
+          abi: AERO_ROUTER_ABI,
+          functionName: "swapExactETHForTokens",
+          args: [amountOutMin, bestAeroRoutes, address, deadline],
+        });
+        value = amountIn;
+      } else if (!outputToken.address) {
+        // Token -> ETH via Aerodrome Router
+        rawData = encodeFunctionData({
+          abi: AERO_ROUTER_ABI,
+          functionName: "swapExactTokensForETH",
+          args: [amountIn, amountOutMin, bestAeroRoutes, address, deadline],
+        });
       } else {
-        if (!inputToken.address) {
-          // ETH -> Token
-          rawData = encodeFunctionData({
-            abi: ROUTER_ABI,
-            functionName: "swapExactETHForTokens",
-            args: [amountOutMin, path, address, deadline],
-          });
-          value = amountIn;
-        } else if (!outputToken.address) {
-          // Token -> ETH
-          rawData = encodeFunctionData({
-            abi: ROUTER_ABI,
-            functionName: "swapExactTokensForETH",
-            args: [amountIn, amountOutMin, path, address, deadline],
-          });
-        } else {
-          // Token -> Token
-          rawData = encodeFunctionData({
-            abi: ROUTER_ABI,
-            functionName: "swapExactTokensForTokens",
-            args: [amountIn, amountOutMin, path, address, deadline],
-          });
-        }
+        // Token -> Token via Aerodrome Router
+        rawData = encodeFunctionData({
+          abi: AERO_ROUTER_ABI,
+          functionName: "swapExactTokensForTokens",
+          args: [amountIn, amountOutMin, bestAeroRoutes, address, deadline],
+        });
       }
 
       // ✅ Append Builder Code for attribution tracking!
