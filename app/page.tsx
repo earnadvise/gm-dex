@@ -764,11 +764,12 @@ export default function Home() {
       const minSlippageBps = BigInt(Math.max(1, Math.floor((100 - activeSlippage) * 100)));
       const amountIn = amountWei;
 
-      // Safe slippage threshold for custom tokens or active pools (allow at least 5% slippage floor for custom/imported tokens)
-      const isCustomTok = !SUPPORTED_TOKENS.some(t => t.address.toLowerCase() === (inputToken.address || "").toLowerCase()) ||
-                          !SUPPORTED_TOKENS.some(t => t.address.toLowerCase() === (outputToken.address || "").toLowerCase());
-      const effectiveSlippageBps = isCustomTok ? BigInt(Math.min(Number(minSlippageBps), 9500)) : minSlippageBps;
-      const amountOutMin = finalOutWei > 0n ? (finalOutWei * effectiveSlippageBps) / 10000n : 0n;
+      // If live on-chain quote (outWei) is available, apply user slippage to outWei.
+      // If falling back to off-chain price estimate, use 5% safety buffer to prevent INSUFFICIENT_OUTPUT_AMOUNT reverts.
+      const amountOutMin = outWei > 0n 
+        ? (outWei * minSlippageBps) / 10000n 
+        : (finalOutWei * 9500n) / 10000n;
+
       const deadline = BigInt(Math.floor(Date.now() / 1000) + (deadlineMinutes || 20) * 60);
 
       let rawData: Hex;
