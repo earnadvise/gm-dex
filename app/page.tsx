@@ -595,28 +595,86 @@ export default function Home() {
   }, []);
 
   const amountWei = parseAmt(amount, inputToken.decimals);
+  const USDC_ADDR = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as `0x${string}`;
 
-  // Build swap path — Token→Token routes through WETH for liquidity
-  const buildPath = (): `0x${string}`[] => {
-    const inAddr = (inputToken.address || WETH) as `0x${string}`;
-    const outAddr = (outputToken.address || WETH) as `0x${string}`;
-    // If either side is ETH/WETH, direct path
-    if (!inputToken.address || !outputToken.address) return [inAddr, outAddr];
-    // Token→Token: route through WETH
-    return [inAddr, WETH as `0x${string}`, outAddr];
-  };
-  const path = buildPath();
+  // Candidate paths for Base L2 liquidity routing
+  const pathDirect: `0x${string}`[] = [
+    (inputToken.address || WETH) as `0x${string}`,
+    (outputToken.address || WETH) as `0x${string}`,
+  ];
+  const pathUSDC: `0x${string}`[] = [
+    (inputToken.address || WETH) as `0x${string}`,
+    USDC_ADDR,
+    (outputToken.address || WETH) as `0x${string}`,
+  ];
+  const pathWETH: `0x${string}`[] = [
+    (inputToken.address || WETH) as `0x${string}`,
+    WETH as `0x${string}`,
+    (outputToken.address || WETH) as `0x${string}`,
+  ];
 
-  // Quote
-  const { data: amountsOut, isLoading: isQuoteLoading } = useReadContract({
+  // On-chain quotes for Direct, USDC-hop, and WETH-hop
+  const { data: amountsOutDirect, isLoading: isQuoteLoadingDirect } = useReadContract({
     address: UNISWAP_V2_ROUTER,
     abi: ROUTER_ABI,
     functionName: "getAmountsOut",
-    args: amountWei > 0n ? [amountWei, path] : undefined,
-    query: { enabled: isConnected && amountWei > 0n },
+    args: amountWei > 0n ? [amountWei, pathDirect] : undefined,
+    query: { enabled: amountWei > 0n },
   });
 
-  const outWei = amountsOut ? (amountsOut as bigint[])[amountsOut.length - 1] : 0n;
+  const { data: amountsOutUSDC } = useReadContract({
+    address: UNISWAP_V2_ROUTER,
+    abi: ROUTER_ABI,
+    functionName: "getAmountsOut",
+    args: amountWei > 0n && !!inputToken.address && !!outputToken.address ? [amountWei, pathUSDC] : undefined,
+    query: { enabled: amountWei > 0n && !!inputToken.address && !!outputToken.address },
+  });
+
+  const { data: amountsOutWETH } = useReadContract({
+    address: UNISWAP_V2_ROUTER,
+    abi: ROUTER_ABI,
+    functionName: "getAmountsOut",
+    args: amountWei > 0n && !!inputToken.address && !!outputToken.address ? [amountWei, pathWETH] : undefined,
+    query: { enabled: amountWei > 0n && !!inputToken.address && !!outputToken.address },
+  });
+
+  const outDirect = amountsOutDirect ? (amountsOutDirect as bigint[])[amountsOutDirect.length - 1] : 0n;
+  const outUSDC = amountsOutUSDC ? (amountsOutUSDC as bigint[])[amountsOutUSDC.length - 1] : 0n;
+  const outWETH = amountsOutWETH ? (amountsOutWETH as bigint[])[amountsOutWETH.length - 1] : 0n;
+
+  // Determine best path with real on-chain liquidity
+  const getBestPathInfo = (): { path: `0x${string}`[]; outWei: bigint } => {
+    if (!inputToken.address || !outputToken.address) {
+      return { path: pathDirect, outWei: outDirect };
+    }
+
+    let bestVal = 0n;
+    let bestP = pathDirect;
+
+    if (outDirect > bestVal) {
+      bestVal = outDirect;
+      bestP = pathDirect;
+    }
+    if (outUSDC > bestVal) {
+      bestVal = outUSDC;
+      bestP = pathUSDC;
+    }
+    if (outWETH > bestVal) {
+      bestVal = outWETH;
+      bestP = pathWETH;
+    }
+
+    if (bestVal === 0n) {
+      const inIsUsdc = inputToken.address?.toLowerCase() === USDC_ADDR.toLowerCase();
+      const outIsUsdc = outputToken.address?.toLowerCase() === USDC_ADDR.toLowerCase();
+      bestP = inIsUsdc || outIsUsdc ? pathDirect : pathUSDC;
+    }
+
+    return { path: bestP, outWei: bestVal };
+  };
+
+  const { path, outWei } = getBestPathInfo();
+  const isQuoteLoading = isQuoteLoadingDirect;
 
   const { prices: livePrices, fetchCustomTokenPrice } = useTokenPrices();
 
