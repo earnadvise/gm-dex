@@ -104,6 +104,76 @@ const GM_DEX_ROUTER = "0x9dc3BBdB8817309ba42b79cc357EC6Be47030B70" as `0x${strin
 const GM_DEX_LIQUIDITY = "0x379bB6CBd151c8A9C3da6e534E46356e17b14572" as `0x${string}`;
 const AERO_ROUTER = "0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43" as `0x${string}`;
 const AERO_FACTORY = "0x420DD381b31aEf6683db6B902084cB0FFECe40Da" as `0x${string}`;
+const SWAP_ROUTER_02 = "0x2626664c2603336E57B271c5C0b26F421741e481" as `0x${string}`;
+const QUOTER_V2 = "0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a" as `0x${string}`;
+
+const QUOTER_V2_ABI = [
+  {
+    inputs: [
+      {
+        components: [
+          { name: "tokenIn", type: "address" },
+          { name: "tokenOut", type: "address" },
+          { name: "amountIn", type: "uint256" },
+          { name: "fee", type: "uint24" },
+          { name: "sqrtPriceLimitX96", type: "uint160" },
+        ],
+        name: "params",
+        type: "tuple",
+      },
+    ],
+    name: "quoteExactInputSingle",
+    outputs: [
+      { name: "amountOut", type: "uint256" },
+      { name: "sqrtPriceX96After", type: "uint160" },
+      { name: "initializedTicksCrossed", type: "uint32" },
+      { name: "gasEstimate", type: "uint256" },
+    ],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+] as const;
+
+const SWAP_ROUTER_02_ABI = [
+  {
+    inputs: [
+      {
+        components: [
+          { name: "tokenIn", type: "address" },
+          { name: "tokenOut", type: "address" },
+          { name: "fee", type: "uint24" },
+          { name: "recipient", type: "address" },
+          { name: "amountIn", type: "uint256" },
+          { name: "amountOutMinimum", type: "uint256" },
+          { name: "sqrtPriceLimitX96", type: "uint160" },
+        ],
+        name: "params",
+        type: "tuple",
+      },
+    ],
+    name: "exactInputSingle",
+    outputs: [{ name: "amountOut", type: "uint256" }],
+    stateMutability: "payable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { name: "amountMinimum", type: "uint256" },
+      { name: "recipient", type: "address" },
+    ],
+    name: "unwrapWETH9",
+    outputs: [],
+    stateMutability: "payable",
+    type: "function",
+  },
+  {
+    inputs: [{ name: "data", type: "bytes[]" }],
+    name: "multicall",
+    outputs: [{ name: "results", type: "bytes[]" }],
+    stateMutability: "payable",
+    type: "function",
+  },
+] as const;
 
 const AERO_ROUTER_ABI = [
   {
@@ -761,6 +831,43 @@ export default function Home() {
     query: { enabled: uniInputWei > 0n && isGrantSwap },
   });
 
+  // Uniswap V3 Router Quotes via QuoterV2 (Fee 500 = 0.05%, Fee 3000 = 0.3%)
+  const v3InAddr = (inputToken.address || WETH) as `0x${string}`;
+  const v3OutAddr = (outputToken.address || WETH) as `0x${string}`;
+
+  const { data: quoteV3_500, isLoading: isQuoteLoadingV3_500 } = useReadContract({
+    address: QUOTER_V2,
+    abi: QUOTER_V2_ABI,
+    functionName: "quoteExactInputSingle",
+    args: amountWei > 0n && v3InAddr.toLowerCase() !== v3OutAddr.toLowerCase() ? [{
+      tokenIn: v3InAddr,
+      tokenOut: v3OutAddr,
+      amountIn: amountWei,
+      fee: 500,
+      sqrtPriceLimitX96: 0n,
+    }] : undefined,
+    query: { enabled: amountWei > 0n && v3InAddr.toLowerCase() !== v3OutAddr.toLowerCase() },
+  });
+
+  const { data: quoteV3_3000, isLoading: isQuoteLoadingV3_3000 } = useReadContract({
+    address: QUOTER_V2,
+    abi: QUOTER_V2_ABI,
+    functionName: "quoteExactInputSingle",
+    args: amountWei > 0n && v3InAddr.toLowerCase() !== v3OutAddr.toLowerCase() ? [{
+      tokenIn: v3InAddr,
+      tokenOut: v3OutAddr,
+      amountIn: amountWei,
+      fee: 3000,
+      sqrtPriceLimitX96: 0n,
+    }] : undefined,
+    query: { enabled: amountWei > 0n && v3InAddr.toLowerCase() !== v3OutAddr.toLowerCase() },
+  });
+
+  const outV3_500 = quoteV3_500 ? (quoteV3_500 as [bigint])[0] : 0n;
+  const outV3_3000 = quoteV3_3000 ? (quoteV3_3000 as [bigint])[0] : 0n;
+  const bestV3Fee: 500 | 3000 = outV3_500 >= outV3_3000 ? 500 : 3000;
+  const outUniV3 = outV3_500 >= outV3_3000 ? outV3_500 : outV3_3000;
+
   const outAeroDirect = amountsOutAeroDirect ? (amountsOutAeroDirect as bigint[])[amountsOutAeroDirect.length - 1] : 0n;
   const outAeroUSDC = amountsOutAeroUSDC ? (amountsOutAeroUSDC as bigint[])[amountsOutAeroUSDC.length - 1] : 0n;
   const outAeroWETH = amountsOutAeroWETH ? (amountsOutAeroWETH as bigint[])[amountsOutAeroWETH.length - 1] : 0n;
@@ -793,15 +900,34 @@ export default function Home() {
     bestAeroRoutes = inIsUsdc || outIsUsdc ? aeroRoutesDirect : aeroRoutesUSDC;
   }
 
-  // Dual Smart-Routing decision:
-  // If standard grant tokens AND Uniswap V2 has verified liquidity, use GM_DEX_ROUTER (grant compliance + 0.1% treasury fee)
-  // Otherwise, use Aerodrome V2 Router with deep Base liquidity (0 simulation errors)
-  const useGrantRouter = isGrantSwap && outUniDirect > 0n;
-  const targetRouter = useGrantRouter ? GM_DEX_ROUTER : AERO_ROUTER;
+  // Tri-DEX Smart-Routing decision:
+  // 1. Grant tokens with on-chain Uniswap V2 liquidity -> GM_DEX_ROUTER (grant compliance + 0.1% treasury fee)
+  // 2. Aerodrome V2 if it has best liquidity -> AERO_ROUTER
+  // 3. Uniswap V3 if it has best liquidity (e.g. AXIS, meme tokens) -> SWAP_ROUTER_02
+  let targetRouter: `0x${string}`;
+  let outWei: bigint = 0n;
+  let activeRouterType: "GRANT" | "AERO" | "UNIV3" = "AERO";
 
-  const outWei = useGrantRouter ? outUniDirect : bestAeroVal;
-  const path = useGrantRouter ? pathDirect : bestAeroPath;
-  const isQuoteLoading = isQuoteLoadingUni || isQuoteLoadingAeroDirect;
+  if (isGrantSwap && outUniDirect > 0n) {
+    activeRouterType = "GRANT";
+    targetRouter = GM_DEX_ROUTER;
+    outWei = outUniDirect;
+  } else if (bestAeroVal >= outUniV3 && bestAeroVal > 0n) {
+    activeRouterType = "AERO";
+    targetRouter = AERO_ROUTER;
+    outWei = bestAeroVal;
+  } else if (outUniV3 > 0n) {
+    activeRouterType = "UNIV3";
+    targetRouter = SWAP_ROUTER_02;
+    outWei = outUniV3;
+  } else {
+    activeRouterType = "AERO";
+    targetRouter = AERO_ROUTER;
+    outWei = 0n;
+  }
+
+  const path = activeRouterType === "GRANT" ? pathDirect : bestAeroPath;
+  const isQuoteLoading = isQuoteLoadingUni || isQuoteLoadingAeroDirect || isQuoteLoadingV3_500;
 
   const { prices: livePrices, fetchCustomTokenPrice } = useTokenPrices();
 
@@ -905,7 +1031,7 @@ export default function Home() {
       let rawData: Hex;
       let value = 0n;
 
-      if (useGrantRouter) {
+      if (activeRouterType === "GRANT") {
         // Execute through Grant Contract (GM_DEX_ROUTER) for Grant evaluators & 0.1% Treasury Fee
         if (!inputToken.address) {
           rawData = encodeFunctionData({
@@ -925,6 +1051,65 @@ export default function Home() {
             abi: ROUTER_ABI,
             functionName: "swapExactTokensForTokens",
             args: [amountIn, amountOutMin, path, address, deadline],
+          });
+        }
+      } else if (activeRouterType === "UNIV3") {
+        // Execute through Uniswap V3 (SwapRouter02) for high-liquidity Base pairs (e.g. AXIS, memes)
+        if (!inputToken.address) {
+          // Native ETH -> Token
+          rawData = encodeFunctionData({
+            abi: SWAP_ROUTER_02_ABI,
+            functionName: "exactInputSingle",
+            args: [{
+              tokenIn: WETH as `0x${string}`,
+              tokenOut: outputToken.address as `0x${string}`,
+              fee: bestV3Fee,
+              recipient: address,
+              amountIn: amountWei,
+              amountOutMinimum: amountOutMin,
+              sqrtPriceLimitX96: 0n,
+            }],
+          });
+          value = amountWei;
+        } else if (!outputToken.address) {
+          // Token -> Native ETH (multicall exactInputSingle + unwrapWETH9)
+          const swapCall = encodeFunctionData({
+            abi: SWAP_ROUTER_02_ABI,
+            functionName: "exactInputSingle",
+            args: [{
+              tokenIn: inputToken.address as `0x${string}`,
+              tokenOut: WETH as `0x${string}`,
+              fee: bestV3Fee,
+              recipient: SWAP_ROUTER_02,
+              amountIn: amountWei,
+              amountOutMinimum: amountOutMin,
+              sqrtPriceLimitX96: 0n,
+            }],
+          });
+          const unwrapCall = encodeFunctionData({
+            abi: SWAP_ROUTER_02_ABI,
+            functionName: "unwrapWETH9",
+            args: [amountOutMin, address],
+          });
+          rawData = encodeFunctionData({
+            abi: SWAP_ROUTER_02_ABI,
+            functionName: "multicall",
+            args: [[swapCall, unwrapCall]],
+          });
+        } else {
+          // Token -> Token (e.g. AXIS -> USDC)
+          rawData = encodeFunctionData({
+            abi: SWAP_ROUTER_02_ABI,
+            functionName: "exactInputSingle",
+            args: [{
+              tokenIn: inputToken.address as `0x${string}`,
+              tokenOut: outputToken.address as `0x${string}`,
+              fee: bestV3Fee,
+              recipient: address,
+              amountIn: amountWei,
+              amountOutMinimum: amountOutMin,
+              sqrtPriceLimitX96: 0n,
+            }],
           });
         }
       } else {
@@ -1710,7 +1895,7 @@ export default function Home() {
                 Best Execution & Deep Liquidity
               </h2>
               <p className="text-zinc-400 text-sm sm:text-base mt-1">
-                Direct Aerodrome V2 routing with minimal slippage and automated fee collection. Swap ETH, USDC, EURC & more instantly.
+                Smart routing via Aerodrome V2, Uniswap V3 & GMDEX with minimal slippage. Swap any token on Base instantly.
               </p>
             </div>
 
@@ -1769,7 +1954,9 @@ export default function Home() {
                   </div>
                   <div className="flex justify-between items-center text-xs font-semibold text-zinc-300">
                     <span>Routing Engine</span>
-                    <span className="text-white font-bold">Aerodrome V2</span>
+                    <span className="text-[#01C38E] font-bold">
+                      {activeRouterType === "GRANT" ? "GMDEX Router (0.1% Fee)" : activeRouterType === "UNIV3" ? "Uniswap V3 (Best Price)" : "Aerodrome V2"}
+                    </span>
                   </div>
                 </div>
               </div>
