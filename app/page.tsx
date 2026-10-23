@@ -681,14 +681,6 @@ export default function Home() {
   const amountWei = parseAmt(amount, inputToken.decimals);
   const USDC_ADDR = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as `0x${string}`;
 
-  // Check if swapping standard grant-supported tokens (ETH, WETH, USDC, USDT, EURC, cbBTC)
-  const GRANT_TOKENS = ["ETH", "WETH", "USDC", "USDT", "EURC", "CBBTC"];
-  const isGrantSwap = GRANT_TOKENS.includes(inputToken.symbol.toUpperCase()) &&
-                      GRANT_TOKENS.includes(outputToken.symbol.toUpperCase());
-
-  // Target Router: Grant contract for standard tokens; Aerodrome V2 Router for less-known / custom tokens
-  const targetRouter = isGrantSwap ? GM_DEX_ROUTER : AERO_ROUTER;
-
   // Candidate paths for Base L2 liquidity routing
   const pathDirect: `0x${string}`[] = [
     (inputToken.address || WETH) as `0x${string}`,
@@ -729,69 +721,87 @@ export default function Home() {
   const aeroRoutesUSDC = getAeroRoutes(pathUSDC);
   const aeroRoutesWETH = getAeroRoutes(pathWETH);
 
-  // Aerodrome Router Quotes (for Custom / Less Known Tokens)
-  const { data: amountsOutAeroDirect, isLoading: isQuoteLoadingAero } = useReadContract({
+  // Aerodrome Router Quotes (Direct, USDC-hop, WETH-hop)
+  const { data: amountsOutAeroDirect, isLoading: isQuoteLoadingAeroDirect } = useReadContract({
     address: AERO_ROUTER,
     abi: AERO_ROUTER_ABI,
     functionName: "getAmountsOut",
     args: amountWei > 0n ? [amountWei, aeroRoutesDirect] : undefined,
-    query: { enabled: amountWei > 0n && !isGrantSwap },
+    query: { enabled: amountWei > 0n },
   });
 
-  const { data: amountsOutAeroUSDC } = useReadContract({
+  const { data: amountsOutAeroUSDC, isLoading: isQuoteLoadingAeroUSDC } = useReadContract({
     address: AERO_ROUTER,
     abi: AERO_ROUTER_ABI,
     functionName: "getAmountsOut",
     args: amountWei > 0n && !!inputToken.address && !!outputToken.address ? [amountWei, aeroRoutesUSDC] : undefined,
-    query: { enabled: amountWei > 0n && !!inputToken.address && !!outputToken.address && !isGrantSwap },
+    query: { enabled: amountWei > 0n && !!inputToken.address && !!outputToken.address },
   });
 
-  // Uniswap V2 Router Quotes (for Grant Contract Tokens)
+  const { data: amountsOutAeroWETH, isLoading: isQuoteLoadingAeroWETH } = useReadContract({
+    address: AERO_ROUTER,
+    abi: AERO_ROUTER_ABI,
+    functionName: "getAmountsOut",
+    args: amountWei > 0n && !!inputToken.address && !!outputToken.address ? [amountWei, aeroRoutesWETH] : undefined,
+    query: { enabled: amountWei > 0n && !!inputToken.address && !!outputToken.address },
+  });
+
+  // Check if swapping standard grant-supported tokens (ETH, WETH, USDC, USDT, EURC, cbBTC)
+  const GRANT_TOKENS = ["ETH", "WETH", "USDC", "USDT", "EURC", "CBBTC"];
+  const isGrantSwap = GRANT_TOKENS.includes(inputToken.symbol.toUpperCase()) &&
+                      GRANT_TOKENS.includes(outputToken.symbol.toUpperCase());
+
+  // Uniswap V2 Router Quotes (Input after 0.1% GM_DEX_ROUTER fee)
+  const uniInputWei = (amountWei * 9990n) / 10000n;
   const { data: amountsOutUniDirect, isLoading: isQuoteLoadingUni } = useReadContract({
     address: UNISWAP_V2_ROUTER,
     abi: ROUTER_ABI,
     functionName: "getAmountsOut",
-    args: amountWei > 0n ? [amountWei, pathDirect] : undefined,
-    query: { enabled: amountWei > 0n && isGrantSwap },
+    args: uniInputWei > 0n && isGrantSwap ? [uniInputWei, pathDirect] : undefined,
+    query: { enabled: uniInputWei > 0n && isGrantSwap },
   });
 
   const outAeroDirect = amountsOutAeroDirect ? (amountsOutAeroDirect as bigint[])[amountsOutAeroDirect.length - 1] : 0n;
   const outAeroUSDC = amountsOutAeroUSDC ? (amountsOutAeroUSDC as bigint[])[amountsOutAeroUSDC.length - 1] : 0n;
+  const outAeroWETH = amountsOutAeroWETH ? (amountsOutAeroWETH as bigint[])[amountsOutAeroWETH.length - 1] : 0n;
   const outUniDirect = amountsOutUniDirect ? (amountsOutUniDirect as bigint[])[amountsOutUniDirect.length - 1] : 0n;
 
-  // Determine best path & output for active router
-  const getBestPathInfo = () => {
-    if (isGrantSwap) {
-      return { path: pathDirect, aeroRoutes: aeroRoutesDirect, outWei: outUniDirect };
-    }
+  // Determine best Aerodrome path & output
+  let bestAeroVal = 0n;
+  let bestAeroRoutes = aeroRoutesDirect;
+  let bestAeroPath = pathDirect;
 
-    let bestVal = 0n;
-    let bestRoutes = aeroRoutesDirect;
-    let bestPath = pathDirect;
+  if (outAeroDirect > bestAeroVal) {
+    bestAeroVal = outAeroDirect;
+    bestAeroRoutes = aeroRoutesDirect;
+    bestAeroPath = pathDirect;
+  }
+  if (outAeroUSDC > bestAeroVal) {
+    bestAeroVal = outAeroUSDC;
+    bestAeroRoutes = aeroRoutesUSDC;
+    bestAeroPath = pathUSDC;
+  }
+  if (outAeroWETH > bestAeroVal) {
+    bestAeroVal = outAeroWETH;
+    bestAeroRoutes = aeroRoutesWETH;
+    bestAeroPath = pathWETH;
+  }
+  if (bestAeroVal === 0n) {
+    const inIsUsdc = inputToken.address?.toLowerCase() === USDC_ADDR.toLowerCase();
+    const outIsUsdc = outputToken.address?.toLowerCase() === USDC_ADDR.toLowerCase();
+    bestAeroPath = inIsUsdc || outIsUsdc ? pathDirect : pathUSDC;
+    bestAeroRoutes = inIsUsdc || outIsUsdc ? aeroRoutesDirect : aeroRoutesUSDC;
+  }
 
-    if (outAeroDirect > bestVal) {
-      bestVal = outAeroDirect;
-      bestRoutes = aeroRoutesDirect;
-      bestPath = pathDirect;
-    }
-    if (outAeroUSDC > bestVal) {
-      bestVal = outAeroUSDC;
-      bestRoutes = aeroRoutesUSDC;
-      bestPath = pathUSDC;
-    }
+  // Dual Smart-Routing decision:
+  // If standard grant tokens AND Uniswap V2 has verified liquidity, use GM_DEX_ROUTER (grant compliance + 0.1% treasury fee)
+  // Otherwise, use Aerodrome V2 Router with deep Base liquidity (0 simulation errors)
+  const useGrantRouter = isGrantSwap && outUniDirect > 0n;
+  const targetRouter = useGrantRouter ? GM_DEX_ROUTER : AERO_ROUTER;
 
-    if (bestVal === 0n) {
-      const inIsUsdc = inputToken.address?.toLowerCase() === USDC_ADDR.toLowerCase();
-      const outIsUsdc = outputToken.address?.toLowerCase() === USDC_ADDR.toLowerCase();
-      bestPath = inIsUsdc || outIsUsdc ? pathDirect : pathUSDC;
-      bestRoutes = inIsUsdc || outIsUsdc ? aeroRoutesDirect : aeroRoutesUSDC;
-    }
-
-    return { path: bestPath, aeroRoutes: bestRoutes, outWei: bestVal };
-  };
-
-  const { path, aeroRoutes: bestAeroRoutes, outWei } = getBestPathInfo();
-  const isQuoteLoading = isGrantSwap ? isQuoteLoadingUni : isQuoteLoadingAero;
+  const outWei = useGrantRouter ? outUniDirect : bestAeroVal;
+  const path = useGrantRouter ? pathDirect : bestAeroPath;
+  const isQuoteLoading = isQuoteLoadingUni || isQuoteLoadingAeroDirect;
 
   const { prices: livePrices, fetchCustomTokenPrice } = useTokenPrices();
 
@@ -880,17 +890,22 @@ export default function Home() {
       const minSlippageBps = BigInt(Math.max(1, Math.floor((100 - activeSlippage) * 100)));
       const amountIn = amountWei;
 
-      // Safe slippage threshold: if outWei > 0n, use on-chain quote slippage; if estimated quote, use 10% safety buffer so contract execution never reverts!
+      if (outWei === 0n && finalOutWei === 0n) {
+        setError("Unable to find on-chain liquidity for this pair on Base. Please try another pair.");
+        return;
+      }
+
+      // Safe slippage threshold applied to real on-chain quote
       const amountOutMin = outWei > 0n 
         ? (outWei * minSlippageBps) / 10000n 
-        : (finalOutWei * 9000n) / 10000n;
+        : (finalOutWei * 8500n) / 10000n;
 
       const deadline = BigInt(Math.floor(Date.now() / 1000) + (deadlineMinutes || 20) * 60);
 
       let rawData: Hex;
       let value = 0n;
 
-      if (isGrantSwap) {
+      if (useGrantRouter) {
         // Execute through Grant Contract (GM_DEX_ROUTER) for Grant evaluators & 0.1% Treasury Fee
         if (!inputToken.address) {
           rawData = encodeFunctionData({
@@ -913,7 +928,7 @@ export default function Home() {
           });
         }
       } else {
-        // Execute through Aerodrome V2 Router for Less Known / Custom / Aerodrome Tokens
+        // Execute through Aerodrome V2 Router for deep liquidity on Base
         if (!inputToken.address) {
           rawData = encodeFunctionData({
             abi: AERO_ROUTER_ABI,
@@ -940,7 +955,7 @@ export default function Home() {
       const dataWithBuilder = appendBuilderCode(rawData);
 
       const tx = await sendSwap({
-        to: GM_DEX_ROUTER,
+        to: targetRouter,
         data: dataWithBuilder as Hex,
         value,
       });
