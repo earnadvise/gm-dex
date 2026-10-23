@@ -989,7 +989,7 @@ export default function Home() {
         address: inputToken.address as `0x${string}`,
         abi: ERC20_ABI,
         functionName: "approve",
-        args: [targetRouter, amountWei],
+        args: [targetRouter, maxUint256],
       });
 
       if (publicClient && approveHash) {
@@ -1404,7 +1404,7 @@ export default function Home() {
         address: poolAddress as `0x${string}`,
         abi: ERC20_ABI,
         functionName: "approve",
-        args: [AERO_ROUTER, removeLpWei],
+        args: [AERO_ROUTER, maxUint256],
       });
       if (publicClient && approveHash) {
         await publicClient.waitForTransactionReceipt({ hash: approveHash });
@@ -1494,7 +1494,7 @@ export default function Home() {
         address: poolTokenA.address as `0x${string}`,
         abi: ERC20_ABI,
         functionName: "approve",
-        args: [GM_DEX_LIQUIDITY, poolAmountAWei],
+        args: [GM_DEX_LIQUIDITY, maxUint256],
       });
       if (publicClient && approveHash) {
         await publicClient.waitForTransactionReceipt({ hash: approveHash });
@@ -1514,7 +1514,7 @@ export default function Home() {
         address: poolTokenB.address as `0x${string}`,
         abi: ERC20_ABI,
         functionName: "approve",
-        args: [GM_DEX_LIQUIDITY, poolAmountBWei],
+        args: [GM_DEX_LIQUIDITY, maxUint256],
       });
       if (publicClient && approveHash) {
         await publicClient.waitForTransactionReceipt({ hash: approveHash });

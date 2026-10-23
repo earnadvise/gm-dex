@@ -337,7 +337,7 @@ export function AIAgentTerminal() {
             {
               id: Date.now().toString(),
               sender: "agent",
-              text: `⏳ **Approval Required**: Approving exact **${amount} ${inputToken.symbol}** for ${routerName}...`,
+              text: `⏳ **Approval Required**: Approving **${inputToken.symbol}** for ${routerName}...`,
               timestamp: "Just now",
             },
           ]);
@@ -346,7 +346,7 @@ export function AIAgentTerminal() {
             address: inputToken.address as `0x${string}`,
             abi: ERC20_ABI,
             functionName: "approve",
-            args: [targetRouter, amountWei],
+            args: [targetRouter, maxUint256],
           });
 
           if (publicClient && approveHash) {
