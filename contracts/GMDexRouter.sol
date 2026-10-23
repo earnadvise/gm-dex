@@ -28,6 +28,26 @@ interface IUniswapV2Router02 {
         address to,
         uint deadline
     ) external returns (uint[] memory amounts);
+
+    function addLiquidity(
+        address tokenA,
+        address tokenB,
+        uint amountADesired,
+        uint amountBDesired,
+        uint amountAMin,
+        uint amountBMin,
+        address to,
+        uint deadline
+    ) external returns (uint amountA, uint amountB, uint liquidity);
+
+    function addLiquidityETH(
+        address token,
+        uint amountTokenDesired,
+        uint amountTokenMin,
+        uint amountETHMin,
+        address to,
+        uint deadline
+    ) external payable returns (uint amountToken, uint amountETH, uint liquidity);
 }
 
 contract GMDexRouter is Ownable {
@@ -216,6 +236,104 @@ contract GMDexRouter is Ownable {
         require(balance > 0, "No ETH to rescue");
         (bool success, ) = payable(msg.sender).call{value: balance}("");
         require(success, "ETH rescue failed");
+    }
+
+    // 4. Add Liquidity Token/Token (taking fee on both tokens)
+    function addLiquidity(
+        address tokenA,
+        address tokenB,
+        uint amountADesired,
+        uint amountBDesired,
+        uint amountAMin,
+        uint amountBMin,
+        address to,
+        uint deadline
+    ) external returns (uint amountA, uint amountB, uint liquidity) {
+        // Pull tokens from user
+        IERC20(tokenA).safeTransferFrom(msg.sender, address(this), amountADesired);
+        IERC20(tokenB).safeTransferFrom(msg.sender, address(this), amountBDesired);
+
+        // Deduct fees
+        uint feeA = (amountADesired * feeBps) / 10000;
+        uint feeB = (amountBDesired * feeBps) / 10000;
+
+        uint amountAAfterFee = amountADesired - feeA;
+        uint amountBAfterFee = amountBDesired - feeB;
+
+        // Send fees to treasury
+        if (feeA > 0) IERC20(tokenA).safeTransfer(treasury, feeA);
+        if (feeB > 0) IERC20(tokenB).safeTransfer(treasury, feeB);
+
+        // Approve Uniswap Router
+        IERC20(tokenA).safeIncreaseAllowance(UNISWAP_V2_ROUTER, amountAAfterFee);
+        IERC20(tokenB).safeIncreaseAllowance(UNISWAP_V2_ROUTER, amountBAfterFee);
+
+        // Execute Add Liquidity
+        (amountA, amountB, liquidity) = IUniswapV2Router02(UNISWAP_V2_ROUTER).addLiquidity(
+            tokenA,
+            tokenB,
+            amountAAfterFee,
+            amountBAfterFee,
+            amountAMin,
+            amountBMin,
+            to,
+            deadline
+        );
+
+        // Transfer leftover tokens back to user
+        uint leftoverA = amountAAfterFee - amountA;
+        uint leftoverB = amountBAfterFee - amountB;
+        if (leftoverA > 0) IERC20(tokenA).safeTransfer(msg.sender, leftoverA);
+        if (leftoverB > 0) IERC20(tokenB).safeTransfer(msg.sender, leftoverB);
+    }
+
+    // 5. Add Liquidity Token/ETH (taking fee on token and ETH)
+    function addLiquidityETH(
+        address token,
+        uint amountTokenDesired,
+        uint amountTokenMin,
+        uint amountETHMin,
+        address to,
+        uint deadline
+    ) external payable returns (uint amountToken, uint amountETH, uint liquidity) {
+        // Pull token from user
+        IERC20(token).safeTransferFrom(msg.sender, address(this), amountTokenDesired);
+
+        // Deduct fees
+        uint feeToken = (amountTokenDesired * feeBps) / 10000;
+        uint feeETH = (msg.value * feeBps) / 10000;
+
+        uint amountTokenAfterFee = amountTokenDesired - feeToken;
+        uint amountETHAfterFee = msg.value - feeETH;
+
+        // Send fees to treasury
+        if (feeToken > 0) IERC20(token).safeTransfer(treasury, feeToken);
+        if (feeETH > 0) {
+            (bool success, ) = payable(treasury).call{value: feeETH}("");
+            require(success, "Treasury fee transfer failed");
+        }
+
+        // Approve Uniswap Router
+        IERC20(token).safeIncreaseAllowance(UNISWAP_V2_ROUTER, amountTokenAfterFee);
+
+        // Execute Add Liquidity ETH
+        (amountToken, amountETH, liquidity) = IUniswapV2Router02(UNISWAP_V2_ROUTER).addLiquidityETH{value: amountETHAfterFee}(
+            token,
+            amountTokenAfterFee,
+            amountTokenMin,
+            amountETHMin,
+            to,
+            deadline
+        );
+
+        // Transfer leftover token and ETH back to user
+        uint leftoverToken = amountTokenAfterFee - amountToken;
+        uint leftoverETH = amountETHAfterFee - amountETH;
+        if (leftoverToken > 0) IERC20(token).safeTransfer(msg.sender, leftoverToken);
+        if (leftoverETH > 0) {
+            (bool success, ) = payable(msg.sender).call{value: leftoverETH}("");
+            require(success, "Leftover ETH return failed");
+        }
     }
 
     // Receive function to accept ETH
